@@ -9,3 +9,5 @@ CONFIG_MISC_INIT_R=y
 CONFIG_DISPLAY_CPUINFO=y
 CONFIG_DISPLAY_BOARDINFO=y
 CONFIG_OF_PRIOR_STAGE=y
+CONFIG_USE_PREBOOT=y
+CONFIG_PREBOOT="setenv fdt_addr ${fdtcontroladdr}; fdt addr ${fdtcontroladdr};"
