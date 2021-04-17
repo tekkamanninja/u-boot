@@ -1,13 +1,19 @@
 #include <config.h>
 
-#ifdef CONFIG_MACH_SUN50I_H6
-#define BL31_ADDR 0x104000
-#define  SCP_ADDR 0x114000
-#elif defined(CONFIG_MACH_SUN50I_H616)
-#define BL31_ADDR 0x40000000
+#ifdef CONFIG_ARM64
+#define ARCH "arm64"
 #else
-#define BL31_ADDR  0x44000
-#define  SCP_ADDR  0x50000
+#define ARCH "arm"
+#endif
+
+#if defined(CONFIG_MACH_SUN50I) || defined(CONFIG_MACH_SUN50I_H5)
+#define BL31_ADDR	0x00044000
+#define SCP_ADDR	0x00050000
+#elif defined(CONFIG_MACH_SUN50I_H6)
+#define BL31_ADDR	0x00104000
+#define SCP_ADDR	0x00114000
+#elif defined(CONFIG_MACH_SUN50I_H616)
+#define BL31_ADDR	0x40000000
 #endif
 
 / {
@@ -32,30 +38,33 @@
 			filename = "spl/sunxi-spl.bin";
 		};
 
-#ifdef CONFIG_ARM64
+#ifdef CONFIG_SPL_LOAD_FIT
 		fit {
-			description = "Configuration to load ATF before U-Boot";
+			description = "Configuration to load U-Boot and firmware";
+			offset = <32768>;
 			#address-cells = <1>;
 			fit,fdt-list = "of-list";
 
 			images {
 				uboot {
-					description = "U-Boot (64-bit)";
+					description = "U-Boot";
 					type = "standalone";
 					os = "u-boot";
-					arch = "arm64";
+					arch = ARCH;
 					compression = "none";
 					load = <CONFIG_SYS_TEXT_BASE>;
+					entry = <CONFIG_SYS_TEXT_BASE>;
 
 					u-boot-nodtb {
 					};
 				};
 
+#ifdef BL31_ADDR
 				atf {
 					description = "ARM Trusted Firmware";
 					type = "firmware";
 					os = "arm-trusted-firmware";
-					arch = "arm64";
+					arch = ARCH;
 					compression = "none";
 					load = <BL31_ADDR>;
 					entry = <BL31_ADDR>;
@@ -65,6 +74,7 @@
 						missing-msg = "atf-bl31-sunxi";
 					};
 				};
+#endif
 
 #ifdef SCP_ADDR
 				scp {
@@ -93,19 +103,23 @@
 
 				@config-SEQ {
 					description = "NAME";
+#ifdef BL31_ADDR
 					firmware = "atf";
-#ifndef SCP_ADDR
-					loadables = "uboot";
 #else
-					loadables = "scp", "uboot";
+					firmware = "uboot";
 #endif
+					loadables =
+#ifdef SCP_ADDR
+						    "scp",
+#endif
+						    "uboot";
 					fdt = "fdt-SEQ";
 				};
 			};
 		};
 #else
 		u-boot-img {
-			offset = <CONFIG_SPL_PAD_TO>;
+			offset = <32768>;
 		};
 #endif
 	};
