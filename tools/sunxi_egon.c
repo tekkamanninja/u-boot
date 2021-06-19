@@ -16,7 +16,25 @@
 
 static int egon_check_params(struct image_tool_params *params)
 {
-	/* We just need a binary image file. */
+	int arch;
+
+	/* Assume ARM when no architecture specified for compatibility */
+	if (params->Aflag)
+		arch = params->arch;
+	else
+		arch = IH_ARCH_ARM;
+
+	/*
+	 * Check whether the architecture is supported.
+	 */
+	switch (arch) {
+	case IH_ARCH_ARM:
+		break;
+	default:
+		return EXIT_FAILURE;
+	}
+
+	/* We need a binary image file. */
 	return !params->dflag;
 }
 
@@ -25,10 +43,26 @@ static int egon_verify_header(unsigned char *ptr, int image_size,
 {
 	const struct boot_file_head *header = (void *)ptr;
 	uint32_t length;
+	int arch;
 
-	/* First 4 bytes must be an ARM branch instruction. */
-	if ((le32_to_cpu(header->b_instruction) & 0xff000000) != 0xea000000)
-		return EXIT_FAILURE;
+	/* Assume ARM when no architecture specified for compatibility */
+	if (params->Aflag)
+		arch = params->arch;
+	else
+		arch = IH_ARCH_ARM;
+
+	/*
+	 * First 4 bytes must be a branch instruction of the corresponding
+	 * architecture.
+	 */
+	switch (arch) {
+	case IH_ARCH_ARM:
+		if ((le32_to_cpu(header->b_instruction) & 0xff000000) != 0xea000000)
+			return EXIT_FAILURE;
+		break;
+	default:
+		return EXIT_FAILURE; /* Unknown architecture */
+	}
 
 	if (memcmp(header->magic, BOOT0_MAGIC, sizeof(header->magic)))
 		return EXIT_FAILURE;
@@ -76,10 +110,25 @@ static void egon_set_header(void *buf, struct stat *sbuf, int infd,
 	uint32_t *buf32 = buf;
 	uint32_t checksum = 0, value;
 	int i;
+	int arch;
 
-	/* Generate an ARM branch instruction to jump over the header. */
-	value = 0xea000000 | (sizeof(struct boot_file_head) / 4 - 2);
-	header->b_instruction = cpu_to_le32(value);
+	/* Assume ARM when no architecture specified for compatibility */
+	if (params->Aflag)
+		arch = params->arch;
+	else
+		arch = IH_ARCH_ARM;
+
+	/*
+	 * Different architectures need different first instruction to
+	 * branch to the body.
+	 */
+	switch (arch) {
+	case IH_ARCH_ARM:
+		/* Generate an ARM branch instruction to jump over the header. */
+		value = 0xea000000 | (sizeof(struct boot_file_head) / 4 - 2);
+		header->b_instruction = cpu_to_le32(value);
+		break;
+	}
 
 	memcpy(header->magic, BOOT0_MAGIC, sizeof(header->magic));
 	header->check_sum = cpu_to_le32(BROM_STAMP_VALUE);
