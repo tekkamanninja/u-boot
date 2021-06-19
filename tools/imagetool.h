@@ -51,6 +51,7 @@ struct image_tool_params {
 	int pflag;
 	int vflag;
 	int xflag;
+	int Aflag;
 	int skipcpy;
 	int os;
 	int arch;
