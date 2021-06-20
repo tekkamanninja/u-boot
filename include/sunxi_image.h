@@ -9,8 +9,11 @@
  *
  * Shared between mkimage and the SPL.
  */
+
 #ifndef	SUNXI_IMAGE_H
 #define	SUNXI_IMAGE_H
+
+#include <linux/types.h>
 
 #define BOOT0_MAGIC		"eGON.BT0"
 #define BROM_STAMP_VALUE	0x5f0a6c39
@@ -78,5 +81,193 @@ struct boot_file_head {
 
 /* Compile time check to assure proper alignment of structure */
 typedef char boot_file_head_not_multiple_of_32[1 - 2*(sizeof(struct boot_file_head) % 32)];
+
+struct toc0_main_info {
+	uint8_t name[8];
+	__le32  magic;
+	__le32  checksum;
+	__le32  serial;
+	__le32  status;
+	__le32  num_items;
+	__le32  length;
+	uint8_t platform[4];
+	uint8_t reserved[8];
+	uint8_t end[4];
+};
+
+#define TOC0_MAIN_INFO_NAME		"TOC0.GLH"
+#define TOC0_MAIN_INFO_MAGIC		0x89119800
+#define TOC0_MAIN_INFO_END		"MIE;"
+
+struct toc0_item_info {
+	__le32  name;
+	__le32  offset;
+	__le32  length;
+	__le32  status;
+	__le32  type;
+	__le32  load_addr;
+	uint8_t reserved[4];
+	uint8_t end[4];
+};
+
+#define TOC0_ITEM_INFO_NAME_CERT	0x00010101
+#define TOC0_ITEM_INFO_NAME_FIRMWARE	0x00010202
+#define TOC0_ITEM_INFO_NAME_KEY		0x00010303
+#define TOC0_ITEM_INFO_END		"IIE;"
+
+struct toc0_small_tag {
+	uint8_t tag;
+	uint8_t length;
+};
+
+typedef struct toc0_small_tag toc0_small_int;
+typedef struct toc0_small_tag toc0_small_oct;
+typedef struct toc0_small_tag toc0_small_seq;
+typedef struct toc0_small_tag toc0_small_exp;
+
+#define TOC0_SMALL_INT(len) { 0x02, (len) }
+#define TOC0_SMALL_SEQ(len) { 0x30, (len) }
+#define TOC0_SMALL_EXP(tag, len) { 0xa0 | (tag), len }
+
+struct toc0_large_tag {
+	uint8_t tag;
+	uint8_t prefix;
+	uint8_t length_hi;
+	uint8_t length_lo;
+};
+
+typedef struct toc0_large_tag toc0_large_int;
+typedef struct toc0_large_tag toc0_large_bit;
+typedef struct toc0_large_tag toc0_large_seq;
+
+#define TOC0_LARGE_INT(len) { 0x02, 0x82, (len) >> 8, (len) & 0xff }
+#define TOC0_LARGE_BIT(len) { 0x03, 0x82, (len) >> 8, (len) & 0xff }
+#define TOC0_LARGE_SEQ(len) { 0x30, 0x82, (len) >> 8, (len) & 0xff }
+
+/*
+ * This looks somewhat like an X.509 certificate, but it is not valid BER.
+ *
+ * Some differences:
+ *  - Some X.509 certificate fields are missing or rearranged.
+ *  - Some sequences have the wrong tag.
+ *  - Zero-length sequences are accepted.
+ *  - Large strings and integers must be an even number of bytes long.
+ *  - Positive integers are not zero-extended to maintain their sign.
+ *
+ * See https://linux-sunxi.org/TOC0 for more information.
+ */
+struct toc0_cert_item {
+	toc0_large_seq tag_totalSequence;
+	struct toc0_totalSequence {
+		toc0_large_seq tag_mainSequence;
+		struct toc0_mainSequence {
+			toc0_small_exp tag_explicit0;
+			struct toc0_explicit0 {
+				toc0_small_int tag_version;
+				uint8_t version;
+			} explicit0;
+			toc0_small_int tag_serialNumber;
+			uint8_t serialNumber;
+			toc0_small_seq tag_signature;
+			toc0_small_seq tag_issuer;
+			toc0_small_seq tag_validity;
+			toc0_small_seq tag_subject;
+			toc0_large_seq tag_subjectPublicKeyInfo;
+			struct toc0_subjectPublicKeyInfo {
+				toc0_small_seq tag_algorithm;
+				toc0_large_seq tag_publicKey;
+				struct toc0_publicKey {
+					toc0_large_int tag_n;
+					uint8_t n[256];
+					toc0_small_int tag_e;
+					uint8_t e[3];
+				} publicKey;
+			} subjectPublicKeyInfo;
+			toc0_small_exp tag_explicit3;
+			struct toc0_explicit3 {
+				toc0_small_seq tag_extension;
+				struct toc0_extension {
+					toc0_small_int tag_digest;
+					uint8_t digest[32];
+				} extension;
+			} explicit3;
+		} mainSequence;
+		toc0_large_bit tag_sigSequence;
+		struct toc0_sigSequence {
+			toc0_small_seq tag_algorithm;
+			toc0_large_bit tag_signature;
+			uint8_t signature[256];
+		} sigSequence;
+	} totalSequence;
+};
+
+#define sizeof_field(TYPE, MEMBER) sizeof((((TYPE *)0)->MEMBER))
+
+#define TOC0_CERT_ITEM {									\
+	TOC0_LARGE_SEQ(sizeof(struct toc0_totalSequence)),					\
+	{											\
+		TOC0_LARGE_SEQ(sizeof(struct toc0_mainSequence)),				\
+		{										\
+			TOC0_SMALL_EXP(0, sizeof(struct toc0_explicit0)),			\
+			{									\
+				TOC0_SMALL_INT(sizeof_field(struct toc0_explicit0, version)),	\
+				0,								\
+			},									\
+			TOC0_SMALL_INT(sizeof_field(struct toc0_mainSequence, serialNumber)),	\
+			0,									\
+			TOC0_SMALL_SEQ(0),							\
+			TOC0_SMALL_SEQ(0),							\
+			TOC0_SMALL_SEQ(0),							\
+			TOC0_SMALL_SEQ(0),							\
+			TOC0_LARGE_SEQ(sizeof(struct toc0_subjectPublicKeyInfo)),		\
+			{									\
+				TOC0_SMALL_SEQ(0),						\
+				TOC0_LARGE_SEQ(sizeof(struct toc0_publicKey)),			\
+				{								\
+					TOC0_LARGE_INT(sizeof_field(struct toc0_publicKey, n)),	\
+					{},							\
+					TOC0_SMALL_INT(sizeof_field(struct toc0_publicKey, e)),	\
+					{},							\
+				},								\
+			},									\
+			TOC0_SMALL_EXP(3, sizeof(struct toc0_explicit3)),			\
+			{									\
+				TOC0_SMALL_SEQ(sizeof(struct toc0_extension)),			\
+				{								\
+					TOC0_SMALL_INT(sizeof_field(struct toc0_extension, digest)), \
+					{},							\
+				},								\
+			},									\
+		},										\
+		TOC0_LARGE_BIT(sizeof(struct toc0_sigSequence)),				\
+		{										\
+			TOC0_SMALL_SEQ(0),							\
+			TOC0_LARGE_BIT(sizeof_field(struct toc0_sigSequence, signature)),	\
+			{},									\
+		},										\
+	},											\
+}
+
+struct toc0_key_item {
+	__le32  vendor_id;
+	__le32  key0_n_len;
+	__le32  key0_e_len;
+	__le32  key1_n_len;
+	__le32  key1_e_len;
+	__le32  sig_len;
+	uint8_t key0[512];
+	uint8_t key1[512];
+	uint8_t reserved[32];
+	uint8_t sig[256];
+};
+
+#define TOC0_DEFAULT_NUM_ITEMS		3
+#define TOC0_DEFAULT_HEADER_LEN						  \
+	ALIGN(								  \
+		sizeof(struct toc0_main_info)				+ \
+		sizeof(struct toc0_item_info) *	TOC0_DEFAULT_NUM_ITEMS	+ \
+		sizeof(struct toc0_cert_item)				+ \
+		sizeof(struct toc0_key_item),				  \
+	32)
 
 #endif
