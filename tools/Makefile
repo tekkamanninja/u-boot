@@ -98,7 +98,8 @@ AES_OBJS-$(CONFIG_TOOLS_LIBCRYPTO) := $(addprefix lib/aes/, \
 LIBCRYPTO_OBJS-$(CONFIG_TOOLS_LIBCRYPTO) := \
 			lib/fdt-libcrypto.o \
 			kwbimage.o \
-			mxsimage.o
+			mxsimage.o \
+			sunxi_toc0.o
 
 ROCKCHIP_OBS = lib/rc4.o rkcommon.o rkimage.o rksd.o rkspi.o
 
