@@ -3,6 +3,7 @@ if ARCH_MX23
 config MX23
 	bool
 	default y
+	select TOOLS_LIBCRYPTO
 
 choice
 	prompt "MX23 board select"
@@ -34,6 +35,7 @@ if ARCH_MX28
 config MX28
 	bool
 	default y
+	select TOOLS_LIBCRYPTO
 
 choice
 	prompt "MX28 board select"

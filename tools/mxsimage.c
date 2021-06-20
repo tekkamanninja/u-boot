@@ -5,8 +5,6 @@
  * Copyright (C) 2012-2013 Marek Vasut <marex@denx.de>
  */
 
-#ifdef CONFIG_MXS
-
 #include <errno.h>
 #include <fcntl.h>
 #include <stdio.h>
@@ -2363,4 +2361,3 @@ U_BOOT_IMAGE_TYPE(
 	NULL,
 	mxsimage_generate
 );
-#endif
