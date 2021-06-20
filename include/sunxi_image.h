@@ -270,4 +270,18 @@ struct toc0_key_item {
 		sizeof(struct toc0_key_item),				  \
 	32)
 
+static inline bool is_egon_image(void *addr)
+{
+	struct boot_file_head *head = addr;
+
+	return memcmp(head->magic, BOOT0_MAGIC, 8) == 0;
+}
+
+static inline bool is_toc0_image(void *addr)
+{
+	struct toc0_main_info *main = addr;
+
+	return memcmp(main->name, TOC0_MAIN_INFO_NAME, 8) == 0;
+}
+
 #endif
