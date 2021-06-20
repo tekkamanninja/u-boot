@@ -12,6 +12,9 @@ source "scripts/Kconfig.include"
 # Allow defaults in arch-specific code to override any given here
 source "arch/Kconfig"
 
+# Include board configs used by more than one architecture
+source "board/sunxi/Kconfig"
+
 menu "General setup"
 
 config BROKEN
