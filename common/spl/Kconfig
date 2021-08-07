@@ -1342,7 +1342,7 @@ config SPL_OPTEE
 
 config SPL_OPENSBI
 	bool "Support RISC-V OpenSBI"
-	depends on RISCV && SPL_RISCV_MMODE && RISCV_SMODE
+	depends on RISCV && SPL_RISCV_MMODE && RISCV_SMODE && SPL_LOAD_FIT
 	help
 	  OpenSBI is an open-source implementation of the RISC-V Supervisor Binary
 	  Interface (SBI) specification. U-Boot supports the OpenSBI FW_DYNAMIC

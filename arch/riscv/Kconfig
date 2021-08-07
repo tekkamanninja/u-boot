@@ -29,6 +29,9 @@ config TARGET_SIFIVE_UNMATCHED
 config TARGET_SIPEED_MAIX
 	bool "Support Sipeed Maix Board"
 
+config TARGET_SUNXI
+	bool "Support Allwinner sunxi SoCs with RISC-V cores"
+
 endchoice
 
 config SYS_ICACHE_OFF
