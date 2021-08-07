@@ -1,0 +1,11 @@
+// SPDX-License-Identifier: (GPL-2.0 OR MIT)
+
+#include "binman.dtsi"
+
+/ {
+	// FIXME: this is temporary.
+	memory {
+		device_type = "memory";
+		reg = <0x40000000 0x20000000>; /* 512 MB */
+	};
+};

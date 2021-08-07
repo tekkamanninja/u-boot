@@ -376,7 +376,7 @@ config SOFT_SPI
 
 config SPI_SUNXI
 	bool "Allwinner SoC SPI controllers"
-	default ARCH_SUNXI
+	default (ARCH_SUNXI || TARGET_SUNXI)
 	help
 	  Enable the Allwinner SoC SPi controller driver.
 

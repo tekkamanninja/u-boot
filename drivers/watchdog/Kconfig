@@ -28,7 +28,7 @@ config WATCHDOG_TIMEOUT_MSECS
 	default 128000 if ARCH_MX31 || ARCH_MX5 || ARCH_MX6
 	default 128000 if ARCH_MX7 || ARCH_VF610
 	default 30000 if ARCH_SOCFPGA
-	default 16000 if ARCH_SUNXI
+	default 16000 if (ARCH_SUNXI || TARGET_SUNXI)
 	default 60000
 	help
 	  Watchdog timeout in msec
@@ -283,7 +283,7 @@ config WDT_STM32MP
 
 config WDT_SUNXI
 	bool "Allwinner sunxi watchdog timer support"
-	depends on WDT && ARCH_SUNXI
+	depends on WDT && (ARCH_SUNXI || TARGET_SUNXI)
 	default y
 	help
 	  Enable support for the watchdog timer in Allwinner sunxi SoCs.

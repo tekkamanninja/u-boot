@@ -260,6 +260,10 @@ INPUTS-y	+= $(obj)/sunxi-spl-with-ecc.bin
 endif
 endif
 
+ifdef CONFIG_TARGET_SUNXI
+INPUTS-y	+= $(obj)/sunxi-spl.bin
+endif
+
 ifeq ($(CONFIG_SYS_SOC),"at91")
 INPUTS-y	+= $(obj)/boot.bin
 endif

@@ -1,5 +1,24 @@
+menu "Board-specific options"
+	depends on ARCH_SUNXI || TARGET_SUNXI
+
+choice
+	prompt "sunxi SoC Variant"
+
+config MACH_SUN20I
+	bool "sun20i (Allwinner D1)"
+	depends on RISCV
+	select GENERIC_RISCV
+	select SPL_DM if SPL
+	imply SYSRESET_SBI
+
+endchoice
+
+config NR_DRAM_BANKS
+	default 1
+
 choice
 	prompt "SPL Image Type"
+	depends on SPL
 	default SPL_IMAGE_TYPE_SUNXI_EGON
 
 config SPL_IMAGE_TYPE_SUNXI_EGON
@@ -22,3 +41,71 @@ config SPL_IMAGE_TYPE
 	string
 	default "sunxi_egon" if SPL_IMAGE_TYPE_SUNXI_EGON
 	default "sunxi_toc0" if SPL_IMAGE_TYPE_SUNXI_TOC0
+
+config SPL_MAX_SIZE
+	hex
+	default SUNXI_SRAM_SIZE
+
+config SPL_OPENSBI_LOAD_ADDR
+	default 0x40000000
+
+config SUNXI_SRAM_ADDRESS
+	hex
+	default 0x20000 if MACH_SUN20I
+
+config SUNXI_SRAM_SIZE
+	hex
+	default 0x28000 if MACH_SUN20I
+
+config SYS_BOARD
+	default "sunxi"
+
+config SYS_CONFIG_NAME
+	default "sun20i" if MACH_SUN20I
+
+config SYS_CPU
+	default "generic" if MACH_SUN20I
+
+config SYS_SOC
+	default "sunxi"
+
+config SYS_TEXT_BASE
+	default 0x4a000000 if MACH_SUN20I
+
+config BOARD_SPECIFIC_OPTIONS
+	def_bool y
+	select CLK
+	select DM_ETH if NET
+	select DM_GPIO
+	select DM_I2C if I2C
+	select DM_SERIAL
+	select DM_SPI if SPI
+	select GPIO
+	select MMC_SUNXI_HAS_NEW_MODE if MMC_SUNXI
+	select PHY_SUN4I_USB if USB
+	select PINCTRL
+	select SPL_CLK if SPL_DM
+	select SPL_GPIO if SPL_DM
+	select SPL_OF_CONTROL if SPL_DM
+	select SPL_PINCTRL if SPL_DM
+	select SPL_SEPARATE_BSS if SPL
+	select SUPPORT_SPL
+	imply CMD_MMC
+	imply CMD_USB
+	imply DISTRO_DEFAULTS
+	imply FIT
+	imply MMC
+	imply SPL
+	imply SPL_SPI if SPI
+	imply SPL_MMC if MMC
+	imply SUNXI_GPIO
+	imply SYS_I2C_MVTWSI
+	imply SYS_NS16550
+	imply SYSRESET
+	imply USB_EHCI_GENERIC
+	imply USB_EHCI_HCD
+	imply USB_OHCI_GENERIC
+	imply USB_OHCI_HCD
+	imply WDT
+
+endmenu
