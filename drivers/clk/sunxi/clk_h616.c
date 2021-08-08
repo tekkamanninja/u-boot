@@ -7,10 +7,11 @@
 #include <clk-uclass.h>
 #include <dm.h>
 #include <errno.h>
-#include <asm/arch/ccu.h>
 #include <dt-bindings/clock/sun50i-h616-ccu.h>
 #include <dt-bindings/reset/sun50i-h616-ccu.h>
 #include <linux/bitops.h>
+
+#include "ccu.h"
 
 static struct ccu_clk_gate h616_gates[] = {
 	[CLK_BUS_MMC0]		= GATE(0x84c, BIT(0)),

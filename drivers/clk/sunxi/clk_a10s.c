@@ -8,10 +8,11 @@
 #include <clk-uclass.h>
 #include <dm.h>
 #include <errno.h>
-#include <asm/arch/ccu.h>
 #include <dt-bindings/clock/sun5i-ccu.h>
 #include <dt-bindings/reset/sun5i-ccu.h>
 #include <linux/bitops.h>
+
+#include "ccu.h"
 
 static struct ccu_clk_gate a10s_gates[] = {
 	[CLK_AHB_OTG]		= GATE(0x060, BIT(0)),
