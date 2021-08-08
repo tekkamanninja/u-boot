@@ -270,6 +270,32 @@ struct toc0_key_item {
 		sizeof(struct toc0_key_item),				  \
 	32)
 
+struct toc1_main_info {
+	uint8_t name[16];
+	__le32  magic;
+	__le32  checksum;
+	__le32  serial;
+	__le32  status;
+	__le32  num_items;
+	__le32  length;
+	__le32	major_version;
+	__le32	minor_version;
+	__le32	reserved[3];
+	uint8_t end[4];
+};
+
+struct toc1_item_info {
+	uint8_t name[64];
+	__le32  offset;
+	__le32  length;
+	__le32  encryption;
+	__le32  type;
+	__le32  load_addr;
+	__le32  index;
+	__le32	reserved[69];
+	uint8_t end[4];
+};
+
 static inline bool is_egon_image(void *addr)
 {
 	struct boot_file_head *head = addr;
