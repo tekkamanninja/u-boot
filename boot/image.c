@@ -179,6 +179,7 @@ static const table_entry_t uimage_type[] = {
 	{	IH_TYPE_COPRO, "copro", "Coprocessor Image"},
 	{	IH_TYPE_SUNXI_EGON, "sunxi_egon",  "Allwinner eGON Boot Image" },
 	{	IH_TYPE_SUNXI_TOC0, "sunxi_toc0",  "Allwinner TOC0 Boot Image" },
+	{	IH_TYPE_SUNXI_TOC1, "sunxi_toc1",  "Allwinner TOC1 Boot Image" },
 	{	-1,		    "",		  "",			},
 };
 
