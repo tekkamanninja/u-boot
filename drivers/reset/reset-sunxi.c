@@ -15,7 +15,8 @@
 #include <dm/lists.h>
 #include <linux/bitops.h>
 #include <linux/log2.h>
-#include <asm/arch/ccu.h>
+
+#include "../clk/sunxi/ccu.h"
 
 struct sunxi_reset_priv {
 	void *base;
