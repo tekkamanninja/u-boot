@@ -9,7 +9,9 @@
 #define _SUNXI_GPIO_H
 
 #include <linux/types.h>
+#if 0
 #include <asm/arch/cpu.h>
+#endif
 
 /*
  * sunxi has 9 banks of gpio, they are:
@@ -55,30 +57,36 @@
 struct sunxi_gpio {
 	u32 cfg[4];
 	u32 dat;
-	u32 drv[2];
+	u32 drv[4];
 	u32 pull[2];
+	u32 reserved;
 };
 
 /* gpio interrupt control */
 struct sunxi_gpio_int {
-	u32 cfg[3];
+	u32 cfg[4];
 	u32 ctl;
 	u32 sta;
 	u32 deb;		/* interrupt debounce */
+	u32 reserved;
 };
 
+#if 0
 struct sunxi_gpio_reg {
 	struct sunxi_gpio gpio_bank[SUNXI_GPIO_BANKS];
 	u8 res[0xbc];
 	struct sunxi_gpio_int gpio_int;
 };
+#endif
 
 #define SUN50I_H6_GPIO_POW_MOD_SEL	0x340
 #define SUN50I_H6_GPIO_POW_MOD_VAL	0x348
 
+#if 0
 #define BANK_TO_GPIO(bank)	(((bank) < SUNXI_GPIO_L) ? \
 	&((struct sunxi_gpio_reg *)SUNXI_PIO_BASE)->gpio_bank[bank] : \
 	&((struct sunxi_gpio_reg *)SUNXI_R_PIO_BASE)->gpio_bank[(bank) - SUNXI_GPIO_L])
+#endif
 
 #define GPIO_BANK(pin)		((pin) >> 5)
 #define GPIO_NUM(pin)		((pin) & 0x1f)
