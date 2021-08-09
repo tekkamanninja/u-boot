@@ -15,8 +15,10 @@
 #include <asm/cache.h>
 #include <asm/global_data.h>
 #include <asm/io.h>
+#if 0
 #include <asm/arch/clock.h>
 #include <asm/arch/gpio.h>
+#endif
 #include <common.h>
 #include <clk.h>
 #include <dm.h>
@@ -85,6 +87,7 @@
 #define AHB_GATE_OFFSET_EPHY	0
 
 /* IO mux settings */
+#define SUN8I_IOMUX_D1		8
 #define SUN8I_IOMUX_H3		2
 #define SUN8I_IOMUX_R40		5
 #define SUN8I_IOMUX_H6		5
@@ -174,7 +177,7 @@ struct emac_eth_dev {
 
 	enum emac_variant variant;
 	void *mac_reg;
-	phys_addr_t sysctl_reg;
+	void *sysctl_reg;
 	struct phy_device *phydev;
 	struct mii_dev *bus;
 	struct clk tx_clk;
@@ -330,6 +333,7 @@ static int sun8i_emac_set_syscon(struct sun8i_eth_pdata *pdata,
 	u32 reg;
 
 	if (priv->variant == R40_GMAC) {
+#define CONFIG_GMAC_TX_DELAY 0
 		/* Select RGMII for R40 */
 		reg = readl(priv->sysctl_reg + 0x164);
 		reg |= SC_ETCS_INT_GMII |
@@ -562,6 +566,8 @@ static int parse_phy_pins(struct udevice *dev)
 		iomux = SUN8I_IOMUX_H3;
 	else if (IS_ENABLED(CONFIG_MACH_SUN8I_R40))
 		iomux = SUN8I_IOMUX_R40;
+	else if (IS_ENABLED(CONFIG_MACH_SUN20I))
+		iomux = SUN8I_IOMUX_D1;
 	else if (IS_ENABLED(CONFIG_MACH_SUN50I_H6))
 		iomux = SUN8I_IOMUX_H6;
 	else if (IS_ENABLED(CONFIG_MACH_SUN50I_H616))
@@ -574,13 +580,16 @@ static int parse_phy_pins(struct udevice *dev)
 		BUILD_BUG_ON_MSG(1, "missing pinmux value for Ethernet pins");
 
 	for (i = 0; ; i++) {
+#if 0
 		int pin;
+#endif
 
 		pin_name = fdt_stringlist_get(gd->fdt_blob, offset,
 					      "pins", i, NULL);
 		if (!pin_name)
 			break;
 
+#if 0
 		pin = sunxi_name_to_gpio(pin_name);
 		if (pin < 0)
 			continue;
@@ -591,6 +600,7 @@ static int parse_phy_pins(struct udevice *dev)
 			sunxi_gpio_set_drv(pin, drive);
 		if (pull != ~0)
 			sunxi_gpio_set_pull(pin, pull);
+#endif
 	}
 
 	if (!i) {
@@ -931,9 +941,9 @@ static int sun8i_emac_eth_of_to_plat(struct udevice *dev)
 		      __func__);
 		return -EINVAL;
 	}
-	priv->sysctl_reg = fdt_translate_address((void *)gd->fdt_blob,
+	priv->sysctl_reg = (void *)fdt_translate_address((void *)gd->fdt_blob,
 						 offset, reg);
-	if (priv->sysctl_reg == FDT_ADDR_T_NONE) {
+	if (priv->sysctl_reg == (void *)FDT_ADDR_T_NONE) {
 		debug("%s: Cannot find syscon base address\n", __func__);
 		return -EINVAL;
 	}
@@ -1005,6 +1015,8 @@ static int sun8i_emac_eth_of_to_plat(struct udevice *dev)
 
 static const struct udevice_id sun8i_emac_eth_ids[] = {
 	{.compatible = "allwinner,sun8i-h3-emac", .data = (uintptr_t)H3_EMAC },
+	{.compatible = "allwinner,sun20i-d1-emac",
+		.data = (uintptr_t)A64_EMAC },
 	{.compatible = "allwinner,sun50i-a64-emac",
 		.data = (uintptr_t)A64_EMAC },
 	{.compatible = "allwinner,sun8i-a83t-emac",
