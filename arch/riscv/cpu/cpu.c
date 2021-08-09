@@ -9,6 +9,7 @@
 #include <init.h>
 #include <log.h>
 #include <asm/encoding.h>
+#include <asm/sbi.h>
 #include <dm/uclass-internal.h>
 #include <linux/bitops.h>
 
@@ -138,7 +139,19 @@ int arch_cpu_init_dm(void)
 
 int arch_early_init_r(void)
 {
-	return riscv_cpu_probe();
+	int ret;
+
+	ret = riscv_cpu_probe();
+	if (ret)
+		return ret;
+
+	if (CONFIG_IS_ENABLED(SBI)) {
+		ret = sbi_srst_probe();
+		if (ret)
+			return ret;
+	}
+
+	return 0;
 }
 
 /**

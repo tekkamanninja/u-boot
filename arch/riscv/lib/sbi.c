@@ -10,6 +10,7 @@
 #include <common.h>
 #include <asm/encoding.h>
 #include <asm/sbi.h>
+#include <dm/lists.h>
 
 struct sbiret sbi_ecall(int ext, int fid, unsigned long arg0,
 			unsigned long arg1, unsigned long arg2,
@@ -218,3 +219,23 @@ void sbi_remote_sfence_vma_asid(const unsigned long *hart_mask,
 }
 
 #endif /* CONFIG_SBI_V01 */
+
+void sbi_srst_reset(unsigned long type, unsigned long reason)
+{
+	sbi_ecall(SBI_EXT_SRST, SBI_EXT_SRST_RESET, type, reason, 0, 0, 0, 0);
+}
+
+int sbi_srst_probe(void)
+{
+	int ret;
+
+	ret = sbi_probe_extension(SBI_EXT_SRST);
+	if (ret == -ENOTSUPP)
+		return ret;
+
+	ret = device_bind_driver(NULL, "sbi-sysreset", "sbi-sysreset", NULL);
+	if (ret)
+		return ret;
+
+	return 0;
+}

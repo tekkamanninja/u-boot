@@ -85,6 +85,12 @@ config SYSRESET_PSCI
 	  Enable PSCI SYSTEM_RESET function call.  To use this, PSCI firmware
 	  must be running on your system.
 
+config SYSRESET_SBI
+	bool "Enable support for SBI System Reset"
+	depends on SBI
+	help
+	  Support for system poweroff and reset using an SBI ecall.
+
 config SYSRESET_SOCFPGA
 	bool "Enable support for Intel SOCFPGA family"
 	depends on ARCH_SOCFPGA && (TARGET_SOCFPGA_GEN5 || TARGET_SOCFPGA_ARRIA10)
