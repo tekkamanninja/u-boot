@@ -114,6 +114,7 @@ static inline u16 readw(const volatile void __iomem *addr)
 	return val;
 }
 
+#define readl_relaxed readl
 static inline u32 readl(const volatile void __iomem *addr)
 {
 	u32	val;
