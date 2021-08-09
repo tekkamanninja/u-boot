@@ -53,6 +53,13 @@ int initr_watchdog(void)
 						    4 * reset_period) / 4;
 	}
 
+	if (IS_ENABLED(CONFIG_SYSRESET_WATCHDOG)) {
+		int wdt_reboot_register(struct udevice *parent, char *name);
+		ret = wdt_reboot_register(gd->watchdog_dev, "wdt-reboot-auto");
+		if (ret)
+			printf("WDT:   Failed to register for reboot\n");
+	}
+
 	if (!IS_ENABLED(CONFIG_WATCHDOG_AUTOSTART)) {
 		printf("WDT:   Not starting\n");
 		return 0;

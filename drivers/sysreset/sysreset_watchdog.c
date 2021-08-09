@@ -5,7 +5,9 @@
 
 #include <common.h>
 #include <dm.h>
+#include <dm/device-internal.h>
 #include <errno.h>
+#include <malloc.h>
 #include <sysreset.h>
 #include <wdt.h>
 
@@ -15,7 +17,7 @@ struct wdt_reboot_priv {
 
 static int wdt_reboot_request(struct udevice *dev, enum sysreset_t type)
 {
-	struct wdt_reboot_priv *priv = dev_get_priv(dev);
+	struct wdt_reboot_priv *priv = dev_get_plat(dev);
 	int ret;
 
 	ret = wdt_expire_now(priv->wdt, 0);
@@ -29,9 +31,9 @@ static struct sysreset_ops wdt_reboot_ops = {
 	.request = wdt_reboot_request,
 };
 
-int wdt_reboot_probe(struct udevice *dev)
+int wdt_reboot_of_to_plat(struct udevice *dev)
 {
-	struct wdt_reboot_priv *priv = dev_get_priv(dev);
+	struct wdt_reboot_priv *priv = dev_get_plat(dev);
 	int err;
 
 	err = uclass_get_device_by_phandle(UCLASS_WDT, dev,
@@ -54,6 +56,26 @@ U_BOOT_DRIVER(wdt_reboot) = {
 	.id = UCLASS_SYSRESET,
 	.of_match = wdt_reboot_ids,
 	.ops = &wdt_reboot_ops,
-	.priv_auto	= sizeof(struct wdt_reboot_priv),
-	.probe = wdt_reboot_probe,
+	.of_to_plat	= wdt_reboot_of_to_plat,
+	.plat_auto	= sizeof(struct wdt_reboot_priv),
 };
+
+int wdt_reboot_register(struct udevice *parent, char *name)
+{
+	struct wdt_reboot_priv *priv = malloc(sizeof(*priv));
+	int ret;
+
+	if (!priv)
+		return -ENOMEM;
+
+	priv->wdt = parent;
+
+	ret = device_bind(parent, DM_DRIVER_GET(wdt_reboot),
+			  name, priv, ofnode_null(), NULL);
+	if (ret) {
+		free(priv);
+		return ret;
+	}
+
+	return 0;
+}
