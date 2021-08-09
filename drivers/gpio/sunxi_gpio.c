@@ -14,13 +14,37 @@
 #include <errno.h>
 #include <fdtdec.h>
 #include <malloc.h>
+#if !CONFIG_IS_ENABLED(DM_GPIO)
 #include <asm/arch/gpio.h>
+#endif
 #include <asm/io.h>
 #include <asm/gpio.h>
 #include <dm/device-internal.h>
 #include <dt-bindings/gpio/gpio.h>
 
+#include "sunxi_gpio.h"
+
 #define SUNXI_GPIOS_PER_BANK	SUNXI_GPIO_A_NR
+
+void sunxi_gpio_set_cfgbank(struct sunxi_gpio *pio, int bank_offset, u32 val)
+{
+	u32 index = GPIO_CFG_INDEX(bank_offset);
+	u32 offset = GPIO_CFG_OFFSET(bank_offset);
+
+	clrsetbits_le32(&pio->cfg[0] + index, 0xf << offset, val << offset);
+}
+
+int sunxi_gpio_get_cfgbank(struct sunxi_gpio *pio, int bank_offset)
+{
+	u32 index = GPIO_CFG_INDEX(bank_offset);
+	u32 offset = GPIO_CFG_OFFSET(bank_offset);
+	u32 cfg;
+
+	cfg = readl(&pio->cfg[0] + index);
+	cfg >>= offset;
+
+	return cfg & 0xf;
+}
 
 struct sunxi_gpio_plat {
 	struct sunxi_gpio *regs;
