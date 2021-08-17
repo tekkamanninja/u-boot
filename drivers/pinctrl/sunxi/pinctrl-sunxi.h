@@ -1,6 +1,13 @@
 /* SPDX-License-Identifier: GPL-2.0 */
 
+struct sunxi_pinctrl_function {
+	const char	name[sizeof("gpio_out")];
+	u8		mux;
+};
+
 struct sunxi_pinctrl_desc {
+	const struct sunxi_pinctrl_function	*functions;
+	u8					num_functions;
 	u8					first_bank;
 	u8					num_banks;
 };

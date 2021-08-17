@@ -6,7 +6,14 @@
 
 #include "pinctrl-sunxi.h"
 
+static const struct sunxi_pinctrl_function sun8i_a83t_pinctrl_functions[] = {
+	{ "gpio_in",	0 },
+	{ "gpio_out",	1 },
+};
+
 static const struct sunxi_pinctrl_desc sun8i_a83t_pinctrl_desc = {
+	.functions	= sun8i_a83t_pinctrl_functions,
+	.num_functions	= ARRAY_SIZE(sun8i_a83t_pinctrl_functions),
 	.first_bank	= SUNXI_GPIO_A,
 	.num_banks	= 8,
 };
