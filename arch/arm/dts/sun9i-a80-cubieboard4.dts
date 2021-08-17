@@ -475,3 +475,7 @@
 	pinctrl-0 = <&uart0_ph_pins>;
 	status = "okay";
 };
+
+&usbphy {
+	usb0_id_det-gpios = <&pio 7 16 GPIO_ACTIVE_HIGH>; /* PH16 */
+};

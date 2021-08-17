@@ -687,20 +687,6 @@ config INITIAL_USB_SCAN_DELAY
 	option to a non 0 value to add an extra delay before the first usb
 	bus scan.
 
-config USB0_VBUS_DET
-	string "Vbus detect pin for usb0 (otg)"
-	default ""
-	---help---
-	Set the Vbus detect pin for usb0 (otg). This takes a string in the
-	format understood by sunxi_name_to_gpio, e.g. PH1 for pin 1 of port H.
-
-config USB0_ID_DET
-	string "ID detect pin for usb0 (otg)"
-	default ""
-	---help---
-	Set the ID detect pin for usb0 (otg). This takes a string in the
-	format understood by sunxi_name_to_gpio, e.g. PH1 for pin 1 of port H.
-
 config I2C0_ENABLE
 	bool "Enable I2C/TWI controller 0"
 	default y if MACH_SUN4I || MACH_SUN5I || MACH_SUN7I || MACH_SUN8I_R40

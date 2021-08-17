@@ -289,5 +289,6 @@
 
 &usbphy {
 	status = "okay";
+	usb0_id_det-gpios = <&pio 7 8 GPIO_ACTIVE_HIGH>; /* PH8 */
 	usb1_vbus-supply = <&reg_vcc5v0>; /* USB1 VBUS is always on */
 };

@@ -194,6 +194,7 @@
 };
 
 &usbphy {
+	usb0_id_det-gpios = <&pio 0 15 GPIO_ACTIVE_HIGH>; /* PA15 */
 	usb1_vbus-supply = <&reg_dldo1>;
 	usb2_vbus-supply = <&reg_dc1sw>;
 	status = "okay";

@@ -26,3 +26,7 @@
 	pinctrl-0 = <&uart1_pins_b>;
 	status = "okay";
 };
+
+&usbphy {
+	usb0_id_det-gpios = <&pio 6 2 GPIO_ACTIVE_HIGH>; /* PG2 */
+};
