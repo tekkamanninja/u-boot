@@ -6,11 +6,11 @@
  */
 
 #include <common.h>
-#include <asm/arch/pmic_bus.h>
 #include <asm/gpio.h>
 #include <axp_pmic.h>
 #include <dm.h>
 #include <errno.h>
+#include <power/pmic.h>
 
 #define AXP_GPIO_PREFIX			"AXP0-"
 #define AXP_GPIO_COUNT			4
@@ -40,7 +40,7 @@ static int axp_gpio_direction_input(struct udevice *dev, unsigned pin)
 	if (reg == 0)
 		return -EINVAL;
 
-	return pmic_bus_write(reg, AXP_GPIO_CTRL_INPUT);
+	return pmic_reg_write(dev->parent, reg, AXP_GPIO_CTRL_INPUT);
 }
 
 static int axp_gpio_direction_output(struct udevice *dev, unsigned pin,
@@ -52,26 +52,27 @@ static int axp_gpio_direction_output(struct udevice *dev, unsigned pin,
 	if (reg == 0)
 		return -EINVAL;
 
-	return pmic_bus_write(reg, val ? AXP_GPIO_CTRL_OUTPUT_HIGH :
-					 AXP_GPIO_CTRL_OUTPUT_LOW);
+	return pmic_reg_write(dev->parent, reg,
+			      val ? AXP_GPIO_CTRL_OUTPUT_HIGH :
+				    AXP_GPIO_CTRL_OUTPUT_LOW);
 }
 
 static int axp_gpio_get_value(struct udevice *dev, unsigned pin)
 {
-	u8 reg, val, mask;
+	u8 reg, mask;
 	int ret;
 
 	reg = axp_get_gpio_ctrl_reg(pin);
 	if (reg == 0)
 		return -EINVAL;
 
-	ret = pmic_bus_read(AXP_GPIO_STATE, &val);
-	if (ret)
+	ret = pmic_reg_read(dev->parent, AXP_GPIO_STATE);
+	if (ret < 0)
 		return ret;
 
 	mask = 1 << (pin + AXP_GPIO_STATE_OFFSET);
 
-	return (val & mask) ? 1 : 0;
+	return (ret & mask) ? 1 : 0;
 }
 
 static int axp_gpio_set_value(struct udevice *dev, unsigned pin, int val)
@@ -82,8 +83,9 @@ static int axp_gpio_set_value(struct udevice *dev, unsigned pin, int val)
 	if (reg == 0)
 		return -EINVAL;
 
-	return pmic_bus_write(reg, val ? AXP_GPIO_CTRL_OUTPUT_HIGH :
-					 AXP_GPIO_CTRL_OUTPUT_LOW);
+	return pmic_reg_write(dev->parent, reg,
+			      val ? AXP_GPIO_CTRL_OUTPUT_HIGH :
+				    AXP_GPIO_CTRL_OUTPUT_LOW);
 }
 
 static const struct dm_gpio_ops axp_gpio_ops = {
@@ -96,11 +98,6 @@ static const struct dm_gpio_ops axp_gpio_ops = {
 static int axp_gpio_probe(struct udevice *dev)
 {
 	struct gpio_dev_priv *uc_priv = dev_get_uclass_priv(dev);
-	int ret;
-
-	ret = pmic_bus_init();
-	if (ret)
-		return ret;
 
 	/* Tell the uclass how many GPIOs we have */
 	uc_priv->bank_name = AXP_GPIO_PREFIX;
