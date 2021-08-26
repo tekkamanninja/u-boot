@@ -62,7 +62,10 @@
 	BOOT_TARGET_DEVICES_DHCP(func)
 
 #include <config_distro_bootcmd.h>
+#include <environment/distro/sf.h>
 
 #define CONFIG_EXTRA_ENV_SETTINGS \
 	MEM_LAYOUT_ENV_SETTINGS \
-	BOOTENV
+	"fdtfile=" CONFIG_DEFAULT_FDT_FILE "\0" \
+	BOOTENV \
+	BOOTENV_SF
