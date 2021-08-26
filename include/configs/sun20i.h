@@ -55,7 +55,32 @@
 	BOOT_TARGET_DEVICES_DHCP(func)
 
 #include <config_distro_bootcmd.h>
+#include <environment/distro/sf.h>
+
+#define SUN20I_FEDORA_BOOTENV \
+	"bootdir=/boot\0" \
+	"bootenv=uEnv.txt\0" \
+	"mmcdev=0\0" \
+	"mmcpart=3\0"
 
 #define CONFIG_EXTRA_ENV_SETTINGS \
 	MEM_LAYOUT_ENV_SETTINGS \
-	BOOTENV
+	SUN20I_FEDORA_BOOTENV \
+	"loadaddr=0x50000000\0" \
+	"loadbootenv=fatload mmc ${mmcdev} ${loadaddr} ${bootenv}\0" \
+	"ext4bootenv=ext4load mmc ${bootpart} ${loadaddr} ${bootdir}/${bootenv}\0" \
+	"importbootenv=echo Importing environment from mmc${mmcdev} ...; " \
+		"env import -t ${loadaddr} ${filesize}\0" \
+	"mmcbootenv=setenv bootpart ${mmcdev}:${mmcpart}; " \
+		"mmc dev ${mmcdev}; " \
+		"if mmc rescan; then " \
+			"run loadbootenv && run importbootenv; " \
+			"run ext4bootenv && run importbootenv; " \
+			"if test -n $uenvcmd; then " \
+				"echo Running uenvcmd ...; " \
+				"run uenvcmd; " \
+			"fi; " \
+		"fi\0" \
+	"fdtfile=" CONFIG_DEFAULT_FDT_FILE "\0" \
+	BOOTENV \
+	BOOTENV_SF
