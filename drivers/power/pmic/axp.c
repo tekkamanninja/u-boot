@@ -45,13 +45,25 @@ static struct dm_pmic_ops axp_pmic_ops = {
 	.write		= dm_i2c_write,
 };
 
+static const struct pmic_child_info axp_pmic_child_info[] = {
+	{ "drivevbus",	"axp_drivevbus"	},
+	{ }
+};
+
 static int axp_pmic_bind(struct udevice *dev)
 {
+	ofnode regulators_node;
 	int ret;
 
 	ret = dm_scan_fdt_dev(dev);
 	if (ret)
 		return ret;
+
+	regulators_node = dev_read_subnode(dev, "regulators");
+	if (!ofnode_valid(regulators_node))
+		return -ENXIO;
+
+	pmic_bind_children(dev, regulators_node, axp_pmic_child_info);
 
 	if (CONFIG_IS_ENABLED(SYSRESET)) {
 		ret = device_bind_driver_to_node(dev, "axp_sysreset", "axp_sysreset",
