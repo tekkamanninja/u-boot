@@ -89,14 +89,14 @@ static int axp_gpio_set_value(struct udevice *dev, unsigned pin, int val)
 					 AXP_GPIO_CTRL_OUTPUT_LOW);
 }
 
-static const struct dm_gpio_ops gpio_axp_ops = {
+static const struct dm_gpio_ops axp_gpio_ops = {
 	.direction_input	= axp_gpio_direction_input,
 	.direction_output	= axp_gpio_direction_output,
 	.get_value		= axp_gpio_get_value,
 	.set_value		= axp_gpio_set_value,
 };
 
-static int gpio_axp_probe(struct udevice *dev)
+static int axp_gpio_probe(struct udevice *dev)
 {
 	struct gpio_dev_priv *uc_priv = dev_get_uclass_priv(dev);
 
@@ -107,11 +107,11 @@ static int gpio_axp_probe(struct udevice *dev)
 	return 0;
 }
 
-U_BOOT_DRIVER(gpio_axp) = {
-	.name	= "gpio_axp",
-	.id	= UCLASS_GPIO,
-	.ops	= &gpio_axp_ops,
-	.probe	= gpio_axp_probe,
+U_BOOT_DRIVER(axp_gpio) = {
+	.name		= "axp_gpio",
+	.id		= UCLASS_GPIO,
+	.probe		= axp_gpio_probe,
+	.ops		= &axp_gpio_ops,
 };
 
 int axp_gpio_init(void)
@@ -124,7 +124,7 @@ int axp_gpio_init(void)
 		return ret;
 
 	/* There is no devicetree support for the axp yet, so bind directly */
-	ret = device_bind_driver(dm_root(), "gpio_axp", "AXP-gpio", &dev);
+	ret = device_bind_driver(dm_root(), "axp_gpio", "AXP-gpio", &dev);
 	if (ret)
 		return ret;
 
