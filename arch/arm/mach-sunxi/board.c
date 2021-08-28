@@ -78,6 +78,7 @@ ulong board_get_usable_ram_top(ulong total_size)
 static int gpio_init(void)
 {
 	__maybe_unused uint val;
+#if !CONFIG_IS_ENABLED(PINCTRL)
 #if CONFIG_CONS_INDEX == 1 && defined(CONFIG_UART0_PORT_F)
 #if defined(CONFIG_MACH_SUN4I) || \
     defined(CONFIG_MACH_SUN7I) || \
@@ -159,6 +160,7 @@ static int gpio_init(void)
 	sunxi_gpio_set_pull(SUNXI_GPG(7), SUNXI_GPIO_PULL_UP);
 #else
 #error Unsupported console port number. Please fix pin mux settings in board.c
+#endif
 #endif
 
 #ifdef CONFIG_SUN50I_GEN_H6
