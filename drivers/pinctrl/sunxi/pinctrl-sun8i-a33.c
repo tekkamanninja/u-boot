@@ -9,6 +9,13 @@
 static const struct sunxi_pinctrl_function sun8i_a33_pinctrl_functions[] = {
 	{ "gpio_in",	0 },
 	{ "gpio_out",	1 },
+#if IS_ENABLED(CONFIG_UART0_PORT_F)
+	{ "uart0",	3 },	/* PF2-PF4 */
+#else
+	{ "uart0",	3 },	/* PB0-PB1 */
+#endif
+	{ "uart1",	2 },	/* PG6-PG7 */
+	{ "uart2",	2 },	/* PB0-PB1 */
 };
 
 static const struct sunxi_pinctrl_desc sun8i_a33_pinctrl_desc = {
