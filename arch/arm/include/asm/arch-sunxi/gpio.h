@@ -215,10 +215,4 @@ void sunxi_gpio_set_pull(u32 pin, u32 val);
 void sunxi_gpio_set_pull_bank(struct sunxi_gpio *pio, int bank_offset, u32 val);
 int sunxi_name_to_gpio(const char *name);
 
-#if !defined CONFIG_SPL_BUILD && defined CONFIG_AXP_GPIO
-int axp_gpio_init(void);
-#else
-static inline int axp_gpio_init(void) { return 0; }
-#endif
-
 #endif /* _SUNXI_GPIO_H */

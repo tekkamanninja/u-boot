@@ -84,6 +84,14 @@ config ALTERA_PIO
 	  Select this to enable PIO for Altera devices. Please find
 	  details on the "Embedded Peripherals IP User Guide" of Altera.
 
+config AXP_GPIO
+	bool "X-Powers AXP PMICs GPIO driver"
+	depends on DM_GPIO && PMIC_AXP
+	depends on AXP_PMIC_BUS
+	help
+	  This driver supports the GPIO pins on
+	  X-Powers AXP152, AXP2xx, and AXP8xx PMICs.
+
 config BCM6345_GPIO
 	bool "BCM6345 GPIO driver"
 	depends on DM_GPIO && (ARCH_BMIPS || ARCH_BCM68360 || \

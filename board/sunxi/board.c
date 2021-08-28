@@ -179,10 +179,6 @@ int board_init(void)
 	}
 #endif /* !CONFIG_ARM64 */
 
-	ret = axp_gpio_init();
-	if (ret)
-		return ret;
-
 	/* strcmp() would look better, but doesn't get optimised away. */
 	if (CONFIG_SATAPWR[0]) {
 		satapwr_pin = sunxi_name_to_gpio(CONFIG_SATAPWR);
