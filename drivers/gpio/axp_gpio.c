@@ -39,6 +39,24 @@ static int axp_gpio_get_value(struct udevice *dev, unsigned pin)
 	return !!(ret & BIT(desc->status_offset + pin));
 }
 
+static int axp_gpio_get_function(struct udevice *dev, unsigned pin)
+{
+	const struct axp_gpio_desc *desc = dev_get_priv(dev);
+	int ret;
+
+	ret = pmic_reg_read(dev->parent, desc->pins[pin]);
+	if (ret < 0)
+		return ret;
+
+	ret &= AXP_GPIO_CTRL_MASK;
+	if (ret == desc->input_mux)
+		return GPIOF_INPUT;
+	if (ret == AXP_GPIO_CTRL_OUTPUT_HIGH || ret == AXP_GPIO_CTRL_OUTPUT_LOW)
+		return GPIOF_OUTPUT;
+
+	return GPIOF_UNKNOWN;
+}
+
 static int axp_gpio_set_flags(struct udevice *dev, unsigned pin, ulong flags)
 {
 	const struct axp_gpio_desc *desc = dev_get_priv(dev);
@@ -60,6 +78,7 @@ static int axp_gpio_set_flags(struct udevice *dev, unsigned pin, ulong flags)
 
 static const struct dm_gpio_ops axp_gpio_ops = {
 	.get_value		= axp_gpio_get_value,
+	.get_function		= axp_gpio_get_function,
 	.xlate			= gpio_xlate_offs_flags,
 	.set_flags		= axp_gpio_set_flags,
 };
