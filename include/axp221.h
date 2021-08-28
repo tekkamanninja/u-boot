@@ -48,14 +48,3 @@
 
 /* Page 1 addresses */
 #define AXP221_SID		0x20
-
-/* For axp_gpio.c */
-#ifdef CONFIG_AXP221_POWER
-#define AXP_GPIO0_CTRL			0x90
-#define AXP_GPIO1_CTRL			0x92
-#define AXP_GPIO_CTRL_OUTPUT_LOW		0x00 /* Drive pin low */
-#define AXP_GPIO_CTRL_OUTPUT_HIGH		0x01 /* Drive pin high */
-#define AXP_GPIO_CTRL_INPUT			0x02 /* Input */
-#define AXP_GPIO_STATE			0x94
-#define AXP_GPIO_STATE_OFFSET			0
-#endif

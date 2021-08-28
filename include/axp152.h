@@ -13,16 +13,3 @@ enum axp152_reg {
 };
 
 #define AXP152_POWEROFF			(1 << 7)
-
-/* For axp_gpio.c */
-#ifdef CONFIG_AXP152_POWER
-#define AXP_GPIO0_CTRL			0x90
-#define AXP_GPIO1_CTRL			0x91
-#define AXP_GPIO2_CTRL			0x92
-#define AXP_GPIO3_CTRL			0x93
-#define AXP_GPIO_CTRL_OUTPUT_LOW		0x00 /* Drive pin low */
-#define AXP_GPIO_CTRL_OUTPUT_HIGH		0x01 /* Drive pin high */
-#define AXP_GPIO_CTRL_INPUT			0x02 /* Input */
-#define AXP_GPIO_STATE			0x97
-#define AXP_GPIO_STATE_OFFSET			0
-#endif
