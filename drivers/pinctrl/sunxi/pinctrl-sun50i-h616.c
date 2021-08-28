@@ -7,6 +7,7 @@
 #include "pinctrl-sunxi.h"
 
 static const struct sunxi_pinctrl_function sun50i_h616_pinctrl_functions[] = {
+	{ "emac0",	2 },	/* PI0-PI16 */
 	{ "gpio_in",	0 },
 	{ "gpio_out",	1 },
 #if IS_ENABLED(CONFIG_UART0_PORT_F)

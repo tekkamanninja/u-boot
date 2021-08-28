@@ -7,6 +7,7 @@
 #include "pinctrl-sunxi.h"
 
 static const struct sunxi_pinctrl_function sun8i_h3_pinctrl_functions[] = {
+	{ "emac",	2 },	/* PD0-PD17 */
 	{ "gpio_in",	0 },
 	{ "gpio_out",	1 },
 #if IS_ENABLED(CONFIG_UART0_PORT_F)
