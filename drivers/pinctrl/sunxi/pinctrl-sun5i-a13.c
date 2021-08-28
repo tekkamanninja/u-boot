@@ -15,6 +15,7 @@ static const struct sunxi_pinctrl_function sun5i_a13_pinctrl_functions[] = {
 	{ "mmc0",	2 },	/* PF0-PF5 */
 	{ "mmc1",	2 },	/* PG3-PG8 */
 	{ "mmc2",	3 },	/* PC6-PC15 */
+	{ "spi0",	3 },	/* PC0-PC3 */
 #if IS_ENABLED(CONFIG_UART0_PORT_F)
 	{ "uart0",	4 },	/* PF2-PF4 */
 #else

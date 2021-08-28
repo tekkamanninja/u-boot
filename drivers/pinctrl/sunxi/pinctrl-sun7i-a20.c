@@ -20,6 +20,7 @@ static const struct sunxi_pinctrl_function sun7i_a20_pinctrl_functions[] = {
 	{ "mmc1",	4 },	/* PG0-PG5 */
 #endif
 	{ "mmc2",	3 },	/* PC5-PC15, PC24 */
+	{ "spi0",	3 },	/* PC0-PC2, PC23 */
 #if IS_ENABLED(CONFIG_UART0_PORT_F)
 	{ "uart0",	4 },	/* PF2-PF4 */
 #else
