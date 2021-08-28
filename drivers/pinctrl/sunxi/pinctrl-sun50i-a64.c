@@ -12,6 +12,9 @@ static const struct sunxi_pinctrl_function sun50i_a64_pinctrl_functions[] = {
 	{ "gpio_out",	1 },
 	{ "i2c0",	2 },	/* PH0-PH1 */
 	{ "i2c1",	2 },	/* PH2-PH3 */
+	{ "mmc0",	2 },	/* PF0-PF5 */
+	{ "mmc1",	2 },	/* PG0-PG5 */
+	{ "mmc2",	3 },	/* PC1-PC16 */
 #if IS_ENABLED(CONFIG_UART0_PORT_F)
 	{ "uart0",	3 },	/* PF2-PF4 */
 #else

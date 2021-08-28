@@ -12,6 +12,9 @@ static const struct sunxi_pinctrl_function sun8i_v3s_pinctrl_functions[] = {
 	{ "gpio_out",	1 },
 	{ "i2c0",	2 },	/* PB6-PB7 */
 	{ "i2c1",	2 },	/* PB8-PB9 */
+	{ "mmc0",	2 },	/* PF0-PF5 */
+	{ "mmc1",	2 },	/* PG0-PG5 */
+	{ "mmc2",	2 },	/* PC0-PC10 */
 #if IS_ENABLED(CONFIG_UART0_PORT_F)
 	{ "uart0",	3 },	/* PF2-PF4 */
 #else

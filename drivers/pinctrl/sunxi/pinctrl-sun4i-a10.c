@@ -12,6 +12,14 @@ static const struct sunxi_pinctrl_function sun4i_a10_pinctrl_functions[] = {
 	{ "gpio_out",	1 },
 	{ "i2c0",	2 },	/* PB0-PB1 */
 	{ "i2c1",	2 },	/* PB18-PB19 */
+	{ "mmc0",	2 },	/* PF0-PF5 */
+#if IS_ENABLED(CONFIG_MMC1_PINS_PH)
+	{ "mmc1",	5 },	/* PH22-PH27 */
+#else
+	{ "mmc1",	4 },	/* PG0-PG5 */
+#endif
+	{ "mmc2",	3 },	/* PC6-PC15 */
+	{ "mmc3",	2 },	/* PI4-PI9 */
 #if IS_ENABLED(CONFIG_UART0_PORT_F)
 	{ "uart0",	4 },	/* PF2-PF4 */
 #else
