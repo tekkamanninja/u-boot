@@ -10,6 +10,8 @@ static const struct sunxi_pinctrl_function sun9i_a80_pinctrl_functions[] = {
 	{ "gmac",	2 },	/* PA0-PA17 */
 	{ "gpio_in",	0 },
 	{ "gpio_out",	1 },
+	{ "i2c0",	2 },	/* PH0-PH1 */
+	{ "i2c1",	2 },	/* PH2-PH3 */
 #if IS_ENABLED(CONFIG_UART0_PORT_F)
 	{ "uart0",	4 },	/* PF2-PF4 */
 #else

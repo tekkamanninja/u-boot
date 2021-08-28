@@ -9,6 +9,8 @@
 static const struct sunxi_pinctrl_function sun9i_a80_r_pinctrl_functions[] = {
 	{ "gpio_in",	0 },
 	{ "gpio_out",	1 },
+	{ "s_i2c0",	2 },	/* PN0-PN1 */
+	{ "s_i2c1",	3 },	/* PM8-PM9 */
 	{ "s_uart",	3 },	/* PL0-PL1 */
 };
 

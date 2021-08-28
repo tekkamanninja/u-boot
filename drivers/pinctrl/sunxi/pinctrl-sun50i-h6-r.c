@@ -9,6 +9,7 @@
 static const struct sunxi_pinctrl_function sun50i_h6_r_pinctrl_functions[] = {
 	{ "gpio_in",	0 },
 	{ "gpio_out",	1 },
+	{ "s_i2c",	3 },	/* PL0-PL1 */
 	{ "s_uart",	2 },	/* PL2-PL3 */
 };
 

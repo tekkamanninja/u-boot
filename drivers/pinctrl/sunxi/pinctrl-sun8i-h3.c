@@ -10,6 +10,8 @@ static const struct sunxi_pinctrl_function sun8i_h3_pinctrl_functions[] = {
 	{ "emac",	2 },	/* PD0-PD17 */
 	{ "gpio_in",	0 },
 	{ "gpio_out",	1 },
+	{ "i2c0",	2 },	/* PA11-PA12 */
+	{ "i2c1",	3 },	/* PA18-PA19 */
 #if IS_ENABLED(CONFIG_UART0_PORT_F)
 	{ "uart0",	3 },	/* PF2-PF4 */
 #else
