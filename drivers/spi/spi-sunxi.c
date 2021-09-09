@@ -30,6 +30,7 @@
 #include <asm/global_data.h>
 #include <dm/device_compat.h>
 #include <linux/bitops.h>
+#include <linux/log2.h>
 
 #include <asm/bitops.h>
 #include <asm/io.h>
@@ -77,7 +78,7 @@ DECLARE_GLOBAL_DATA_PTR;
 #define SUN4I_SPI_DEFAULT_RATE		1000000
 #define SUN4I_SPI_TIMEOUT_US		1000000
 
-#define SPI_REG(priv, reg)		((priv)->base + \
+#define SPI_REG(priv, reg)		(void *)((priv)->base + \
 					(priv)->variant->regs[reg])
 #define SPI_BIT(priv, bit)		((priv)->variant->bits[bit])
 #define SPI_CS(priv, cs)		(((cs) << SPI_BIT(priv, SPI_TCR_CS_SEL)) & \
@@ -362,7 +363,7 @@ static int sun4i_spi_set_speed(struct udevice *dev, uint speed)
 		reg &= ~(SUN4I_CLK_CTL_CDR2_MASK | SUN4I_CLK_CTL_DRS);
 		reg |= SUN4I_CLK_CTL_CDR2(div) | SUN4I_CLK_CTL_DRS;
 	} else {
-		div = __ilog2(SUN4I_SPI_MAX_RATE) - __ilog2(speed);
+		div = ilog2(SUN4I_SPI_MAX_RATE) - ilog2(speed);
 		reg &= ~((SUN4I_CLK_CTL_CDR1_MASK << 8) | SUN4I_CLK_CTL_DRS);
 		reg |= SUN4I_CLK_CTL_CDR1(div);
 	}
