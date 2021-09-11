@@ -23,7 +23,7 @@
 #if !defined(CONFIG_ARM) && !defined(CONFIG_SUPERH) \
 	&& !defined(CONFIG_PPC32) \
 	&& !defined(CONFIG_PPC64) && !defined(CONFIG_MIPS) \
-	&& !defined(CONFIG_M68K)
+	&& !defined(CONFIG_M68K) && !defined(CONFIG_RISCV)
 static inline void readsl(const void __iomem *addr, void *buf, int len)
 	{ insl((unsigned long)addr, buf, len); }
 static inline void readsw(const void __iomem *addr, void *buf, int len)

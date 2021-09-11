@@ -78,6 +78,7 @@ static inline int __test_and_set_bit(int nr, void *addr)
 	return retval;
 }
 
+#define test_and_clear_bit __test_and_clear_bit
 static inline int __test_and_clear_bit(int nr, void *addr)
 {
 	int mask, retval;
