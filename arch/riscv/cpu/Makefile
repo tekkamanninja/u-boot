@@ -5,3 +5,4 @@
 extra-y = start.o
 
 obj-y += cpu.o mtrap.o
+obj-y += thead/cache.o
