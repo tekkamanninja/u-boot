@@ -541,6 +541,10 @@ static const struct udevice_id sun4i_spi_ids[] = {
 	  .compatible = "allwinner,sun8i-h3-spi",
 	  .data = (ulong)&sun8i_h3_spi_variant,
 	},
+	{
+	  .compatible = "allwinner,sun50i-r329-spi",
+	  .data = (ulong)&sun8i_h3_spi_variant,
+	},
 	{ /* sentinel */ }
 };
 
