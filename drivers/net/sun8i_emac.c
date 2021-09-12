@@ -866,7 +866,7 @@ static int sun8i_emac_eth_of_to_plat(struct udevice *dev)
 
 	if (phy_mode)
 		pdata->phy_interface = phy_get_interface_by_name(phy_mode);
-	printf("phy interface%d\n", pdata->phy_interface);
+	debug("phy interface %d\n", pdata->phy_interface);
 
 	if (pdata->phy_interface == -1) {
 		debug("%s: Invalid PHY interface '%s'\n", __func__, phy_mode);
