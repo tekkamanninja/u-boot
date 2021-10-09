@@ -41,6 +41,15 @@ config REMOTEPROC_STM32_COPRO
 	  Say 'y' here to add support for STM32 Cortex-M4 coprocessors via the
 	  remoteproc framework.
 
+config REMOTEPROC_SUN6I_AR100
+	bool "Support for Allwinner AR100 SCP"
+	select REMOTEPROC
+	depends on ARCH_SUNXI
+	help
+	  Say 'y' here to support Allwinner's AR100 System Control Processor
+	  (SCP), found in various sun6i/sun8i/sun50i family SoCs, through the
+	  remoteproc framework.
+
 config REMOTEPROC_TI_K3_ARM64
 	bool "Support for TI's K3 based ARM64 remoteproc driver"
 	select REMOTEPROC
