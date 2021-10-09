@@ -991,6 +991,23 @@ endif
 endif
 endif
 
+ifeq ($(CONFIG_MACH_SUN8I_H3)$(CONFIG_ARMV7_PSCI),yy)
+INPUTS-$(CONFIG_ARMV7_PSCI) += u-boot-resume.img
+
+MKIMAGEFLAGS_u-boot-resume.img := -B 0x400 -T sunxi_egon
+
+u-boot-resume.img: u-boot-resume.bin
+	$(call if_changed,mkimage)
+
+OBJCOPYFLAGS_u-boot-resume.bin := -O binary
+
+u-boot-resume.bin: u-boot-resume.o
+	$(call if_changed,objcopy)
+
+u-boot-resume.S: u-boot
+	@sed -En 's/(0x[[:xdigit:]]+) +psci_cpu_entry/ldr pc, =\1/p' $<.map > $@
+endif
+
 INPUTS-$(CONFIG_X86) += u-boot-x86-start16.bin u-boot-x86-reset16.bin \
 	$(if $(CONFIG_SPL_X86_16BIT_INIT),spl/u-boot-spl.bin) \
 	$(if $(CONFIG_TPL_X86_16BIT_INIT),tpl/u-boot-tpl.bin)
