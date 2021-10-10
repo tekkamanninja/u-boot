@@ -49,6 +49,9 @@ choice
 	help
 	  Select the supported PSCI version.
 
+config ARMV7_PSCI_1_1
+	bool "PSCI V1.1"
+
 config ARMV7_PSCI_1_0
 	bool "PSCI V1.0"
 

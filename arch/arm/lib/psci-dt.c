@@ -66,6 +66,8 @@ int fdt_psci(void *fdt)
 init_psci_node:
 #if CONFIG_IS_ENABLED(ARMV8_SEC_FIRMWARE_SUPPORT)
 	psci_ver = sec_firmware_support_psci_version();
+#elif defined(CONFIG_ARMV7_PSCI_1_1)
+	psci_ver = ARM_PSCI_VER_1_1;
 #elif defined(CONFIG_ARMV7_PSCI_1_0) || defined(CONFIG_ARMV8_PSCI)
 	psci_ver = ARM_PSCI_VER_1_0;
 #elif defined(CONFIG_ARMV7_PSCI_0_2)
