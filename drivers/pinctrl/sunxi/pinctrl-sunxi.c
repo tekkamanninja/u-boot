@@ -7,6 +7,7 @@
 #include <errno.h>
 #include <malloc.h>
 #include <asm/gpio.h>
+#include "../../../arch/arm/include/asm/arch-sunxi/gpio.h"
 
 #include "pinctrl-sunxi.h"
 
