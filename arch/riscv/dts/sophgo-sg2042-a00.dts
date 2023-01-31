@@ -1,0 +1,93 @@
+// SPDX-License-Identifier: GPL-2.0+
+/*
+ * Copyright (C) 2023 Yixun Lan <dlan@gentoo.org>
+ */
+
+/dts-v1/;
+
+/ {
+	model = "Sophgo SG2042 A00";
+	compatible = "sophgo,sg2042-a00";
+	#address-cells = <2>;
+	#size-cells = <2>;
+
+	aliases {
+		serial0 = &uart0;
+	};
+
+	chosen {
+		bootargs = "console=ttyS0,115200n8 debug loglevel=7";
+		stdout-path = "serial0:115200n8";
+	};
+
+	cpus {
+		#address-cells = <1>;
+		#size-cells = <0>;
+		timebase-frequency = <50000000>;
+
+		CPU0: cpu@0 {
+			clocks = <&clk0>;
+			u-boot,dm-spl;
+			device_type = "cpu";
+			reg = <0>;
+			compatible = "riscv";
+			riscv,isa = "rv64imafdc";
+			mmu-type = "riscv,sv39";
+			// HLIC - hart local interrupt controller
+			CPU0_intc: interrupt-controller {
+				#interrupt-cells = <1>;
+				interrupt-controller;
+				compatible = "riscv,cpu-intc";
+			};
+		};
+	};
+
+	memory@80000000 {
+		device_type = "memory";
+		reg = <0x0 0x80000000 0x4 0x00000000>;
+	};
+
+	clocks {
+		clk0: osc {
+			compatible = "fixed-clock";
+			#clock-cells = <0>;
+			clock-frequency = <66667000>;
+		};
+
+		uart0_clk: uart-clock {
+			compatible = "fixed-clock";
+			#clock-cells = <0>;
+			clock-frequency = <500000000>;
+		};
+	};
+
+	soc {
+		#address-cells = <2>;
+		#size-cells = <2>;
+		compatible = "openpiton,chipset", "simple-bus";
+		ranges;
+
+		uart0: uart@7040000000 {
+			compatible = "snps,dw-apb-uart";
+			reg = <0x00000070 0x40000000 0x00000000 0x00001000>;
+			interrupt-parent = <&PLIC0>;
+			interrupts = <112>;
+			reg-shift = <2>;
+			reg-io-width = <4>;
+			clocks = <&uart0_clk>;
+			status = "okay";
+		};
+
+		PLIC0: plic@fff1100000 {
+			u-boot,dm-spl;
+			#interrupt-cells = <1>;
+			compatible = "sifive,plic-1.0.0";
+			interrupt-controller;
+			interrupts-extended = < &CPU0_intc 11
+						&CPU0_intc 9 >;
+			reg = < 0x000000ff 0xf1100000 0x00000000 0x04000000 >;
+			riscv,max-priority = <7>;
+			riscv,ndev = <2>;
+		};
+	};
+};

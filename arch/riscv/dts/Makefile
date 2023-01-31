@@ -9,6 +9,8 @@ dtb-$(CONFIG_TARGET_SIFIVE_UNMATCHED) += hifive-unmatched-a00.dtb
 dtb-$(CONFIG_TARGET_SIPEED_MAIX) += k210-maix-bit.dtb
 dtb-$(CONFIG_TARGET_STARFIVE_VISIONFIVE2) += jh7110-starfive-visionfive-2-v1.3b.dtb
 dtb-$(CONFIG_TARGET_STARFIVE_VISIONFIVE2) += jh7110-starfive-visionfive-2-v1.2a.dtb
+dtb-$(CONFIG_TARGET_SOPHGO_SG2042) += sophgo-sg2042-a00.dtb
+
 include $(srctree)/scripts/Makefile.dts
 
 targets += $(dtb-y)
