@@ -115,7 +115,7 @@ static int riscv_cpu_bind(struct udevice *dev)
 	 * Return value is not checked since it's possible that the timer
 	 * driver is not included.
 	 */
-	if (plat->cpu_id == gd->arch.boot_hart && plat->timebase_freq) {
+	if (plat->cpu_id == 0 && plat->timebase_freq) {
 		drv = lists_driver_lookup_name("riscv_timer");
 		if (!drv) {
 			debug("Cannot find the timer driver, not included?\n");
