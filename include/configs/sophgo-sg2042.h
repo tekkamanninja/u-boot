@@ -33,6 +33,11 @@
 	"scriptaddr=0x8c100000\0" \
 	"pxefile_addr_r=0x8c200000\0" \
 	"ramdisk_addr_r=0x8c300000\0" \
+	"kernel_addr=0x200000\0" \
+	"ramdisk_addr=0x30000000\0" \
+	"ramdisk_size=8000000\0" \
+	"dtb_addr=0x20000000\0" \
+	"bootcmd=booti ${kernel_addr} ${ramdisk_addr}:${ramdisk_size} ${dtb_addr}\0" \
 	BOOTENV
 
 #endif /* __SOPHGO_SG2042_H */
