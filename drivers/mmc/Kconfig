@@ -462,6 +462,18 @@ config MMC_SDHCI
 
 	  If unsure, say N.
 
+config MMC_SDHCI_BITMAIN
+	bool "SDHCI support for the Bitmain SD/SDIO/eMMC controller"
+	depends on BLK && DM_MMC
+	depends on MMC_SDHCI
+	depends on OF_CONTROL
+	help
+	  This selects the Bitmain SD/SDIO/eMMC driver.
+
+	  If you have a controller with this interface, say Y here.
+
+	  If unsure, say N.
+
 config MMC_SDHCI_IO_ACCESSORS
 	bool
 	depends on MMC_SDHCI

@@ -106,7 +106,18 @@ static void sdhci_prepare_dma(struct sdhci_host *host, struct mmc_data *data,
 
 	if (host->flags & USE_SDMA) {
 		dma_addr = dev_phys_to_bus(mmc_to_dev(host->mmc), host->start_addr);
+#if defined(CONFIG_ARCH_BITMAIN) || defined(CONFIG_ARCH_SOPHGO)
+		if (sdhci_readw(host, SDHCI_HOST_CONTROL2) & SDHCI_HOST_VER4_ENABLE) {
+			sdhci_writel(host, dma_addr, SDHCI_ADMA_ADDRESS);
+			sdhci_writel(host, (dma_addr >> 32), SDHCI_ADMA_ADDRESS_HI);
+			sdhci_writel(host, data->blocks, SDHCI_DMA_ADDRESS);
+			sdhci_writew(host, 0, SDHCI_BLOCK_COUNT);
+		} else {
+			sdhci_writel(host, dma_addr, SDHCI_DMA_ADDRESS);
+		}
+#else
 		sdhci_writel(host, dma_addr, SDHCI_DMA_ADDRESS);
+#endif
 	}
 #if CONFIG_IS_ENABLED(MMC_SDHCI_ADMA)
 	else if (host->flags & (USE_ADMA | USE_ADMA64)) {
@@ -129,8 +140,10 @@ static void sdhci_prepare_dma(struct sdhci_host *host, struct mmc_data *data,
 static int sdhci_transfer_data(struct sdhci_host *host, struct mmc_data *data)
 {
 	dma_addr_t start_addr = host->start_addr;
-	unsigned int stat, rdy, mask, timeout, block = 0;
+	unsigned int stat, error, rdy, mask, timeout, block = 0;
 	bool transfer_done = false;
+
+	debug("start_addr:0x%llx size:%u\n", start_addr, data->blocks * data->blocksize);
 
 	timeout = 1000000;
 	rdy = SDHCI_INT_SPACE_AVAIL | SDHCI_INT_DATA_AVAIL;
@@ -138,8 +151,9 @@ static int sdhci_transfer_data(struct sdhci_host *host, struct mmc_data *data)
 	do {
 		stat = sdhci_readl(host, SDHCI_INT_STATUS);
 		if (stat & SDHCI_INT_ERROR) {
-			pr_debug("%s: Error detected in status(0x%X)!\n",
-				 __func__, stat);
+			error = sdhci_readw(host, SDHCI_ERR_INT_STATUS);
+			printf("%s: Error detected in status(0x%X / 0x%X)!\n",
+			       __func__, stat, error);
 			return -EIO;
 		}
 		if (!transfer_done && (stat & rdy)) {
@@ -166,11 +180,24 @@ static int sdhci_transfer_data(struct sdhci_host *host, struct mmc_data *data)
 				start_addr += SDHCI_DEFAULT_BOUNDARY_SIZE;
 				start_addr = dev_phys_to_bus(mmc_to_dev(host->mmc),
 							     start_addr);
+#if defined(CONFIG_ARCH_BITMAIN) || defined(CONFIG_ARCH_SOPHGO)
+				if (sdhci_readw(host, SDHCI_HOST_CONTROL2) & SDHCI_HOST_VER4_ENABLE) {
+					sdhci_writel(host, start_addr, SDHCI_ADMA_ADDRESS);
+					sdhci_writel(host, (start_addr >> 32), SDHCI_ADMA_ADDRESS_HI);
+				} else {
+					sdhci_writel(host, start_addr, SDHCI_DMA_ADDRESS);
+				}
+#else
 				sdhci_writel(host, start_addr, SDHCI_DMA_ADDRESS);
+#endif
 			}
 		}
 		if (timeout-- > 0)
+#if defined(CONFIG_ARCH_BITMAIN) || defined(CONFIG_ARCH_SOPHGO)
+			udelay(100);
+#else
 			udelay(10);
+#endif
 		else {
 			printf("%s: Transfer data timeout\n", __func__);
 			return -ETIMEDOUT;
@@ -215,6 +242,8 @@ static int sdhci_send_command(struct mmc *mmc, struct mmc_cmd *cmd,
 	unsigned int time = 0;
 	int mmc_dev = mmc_get_blk_desc(mmc)->devnum;
 	ulong start = get_timer(0);
+
+	debug("send cmd: %d, args: 0x%x, resp_type: 0x%x\n", cmd->cmdidx, cmd->cmdarg, cmd->resp_type);
 
 	host->start_addr = 0;
 	/* Timeout unit - ms */
@@ -270,6 +299,8 @@ static int sdhci_send_command(struct mmc *mmc, struct mmc_cmd *cmd,
 	    cmd->cmdidx == MMC_CMD_SEND_TUNING_BLOCK_HS200)
 		flags |= SDHCI_CMD_DATA;
 
+	debug("cmd flags: 0x%x\n", flags);
+
 	/* Set Transfer mode regarding to data flag */
 	if (data) {
 		sdhci_writeb(host, 0xe, SDHCI_TIMEOUT_CONTROL);
@@ -291,7 +322,9 @@ static int sdhci_send_command(struct mmc *mmc, struct mmc_cmd *cmd,
 		sdhci_writew(host, SDHCI_MAKE_BLKSZ(SDHCI_DEFAULT_BOUNDARY_ARG,
 				data->blocksize),
 				SDHCI_BLOCK_SIZE);
+#if defined(CONFIG_ARCH_BITMAIN) || defined(CONFIG_ARCH_SOPHGO)
 		sdhci_writew(host, data->blocks, SDHCI_BLOCK_COUNT);
+#endif
 		sdhci_writew(host, mode, SDHCI_TRANSFER_MODE);
 	} else if (cmd->resp_type & MMC_RSP_BUSY) {
 		sdhci_writeb(host, 0xe, SDHCI_TIMEOUT_CONTROL);
@@ -321,6 +354,8 @@ static int sdhci_send_command(struct mmc *mmc, struct mmc_cmd *cmd,
 		sdhci_writel(host, mask, SDHCI_INT_STATUS);
 	} else
 		ret = -1;
+
+	debug("cmd result: 0x%x\n", stat);
 
 	if (!ret && data)
 		ret = sdhci_transfer_data(host, data);
@@ -368,6 +403,8 @@ int sdhci_set_clock(struct mmc *mmc, unsigned int clock)
 	struct sdhci_host *host = mmc->priv;
 	unsigned int div, clk = 0, timeout;
 	int ret;
+
+	debug("set clock %d, host->max_clk %d\n", clock, host->max_clk);
 
 	/* Wait max 20 ms */
 	timeout = 200;
@@ -446,6 +483,7 @@ int sdhci_set_clock(struct mmc *mmc, unsigned int clock)
 
 	if (host->ops && host->ops->set_clock)
 		host->ops->set_clock(host, div);
+	debug("clk div: 0x%x\n", div);
 
 	if (host->ops && host->ops->config_dll) {
 		ret = host->ops->config_dll(host, clock, true);
@@ -473,7 +511,9 @@ int sdhci_set_clock(struct mmc *mmc, unsigned int clock)
 		timeout--;
 		udelay(1000);
 	}
-
+#if defined(CONFIG_ARCH_BITMAIN) || defined(CONFIG_ARCH_SOPHGO)
+	clk |= SDHCI_CLOCK_PLL_EN;
+#endif
 	clk |= SDHCI_CLOCK_CARD_EN;
 	sdhci_writew(host, clk, SDHCI_CLOCK_CONTROL);
 	return 0;
@@ -498,7 +538,10 @@ static void sdhci_set_power(struct sdhci_host *host, unsigned short power)
 			break;
 		}
 	}
-
+#if (defined(CONFIG_ARCH_BITMAIN) || defined(CONFIG_ARCH_SOPHGO)) && defined(MMC_SUPPORTS_TUNING)
+	debug("%s: request 0x%x, but using 1.8V\n", __func__, 1 << power);
+	pwr = SDHCI_POWER_180;
+#endif
 	if (pwr == 0) {
 		sdhci_writeb(host, 0, SDHCI_POWER_CONTROL);
 		return;
@@ -651,6 +694,8 @@ static int sdhci_set_ios(struct mmc *mmc)
 	struct sdhci_host *host = mmc->priv;
 	bool no_hispd_bit = false;
 
+	debug("%s, host->clock %d, mmc->clock %d\n", __func__, host->clock, mmc->clock);
+
 	if (host->ops && host->ops->set_control_reg)
 		host->ops->set_control_reg(host);
 
@@ -780,7 +825,10 @@ static int sdhci_get_cd(struct udevice *dev)
 	struct mmc *mmc = mmc_get_mmc_dev(dev);
 	struct sdhci_host *host = mmc->priv;
 	int value;
-
+#if defined(CONFIG_ARCH_BITMAIN) || defined(CONFIG_ARCH_SOPHGO)
+	if (host->ops && host->ops->get_cd)
+		return host->ops->get_cd(host);
+#endif
 	/* If nonremovable, assume that the card is always present. */
 	if (mmc->cfg->host_caps & MMC_CAP_NONREMOVABLE)
 		return 1;

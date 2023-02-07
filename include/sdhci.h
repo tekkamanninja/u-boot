@@ -101,6 +101,7 @@
 #define  SDHCI_DIV_MASK_LEN	8
 #define  SDHCI_DIV_HI_MASK	0x300
 #define  SDHCI_PROG_CLOCK_MODE  BIT(5)
+#define  SDHCI_CLOCK_PLL_EN	BIT(3)
 #define  SDHCI_CLOCK_CARD_EN	BIT(2)
 #define  SDHCI_CLOCK_INT_STABLE	BIT(1)
 #define  SDHCI_CLOCK_INT_EN	BIT(0)
@@ -113,7 +114,11 @@
 #define  SDHCI_RESET_DATA	0x04
 
 #define SDHCI_INT_STATUS	0x30
+#define SDHCI_ERR_INT_STATUS	0x32
+#define SDHCI_INT_XFER_COMPLETE	BIT(1)
+#define SDHCI_INT_BUF_RD_READY	BIT(5)
 #define SDHCI_INT_ENABLE	0x34
+#define SDHCI_ERR_INT_STATUS_EN	0x36
 #define SDHCI_SIGNAL_ENABLE	0x38
 #define  SDHCI_INT_RESPONSE	BIT(0)
 #define  SDHCI_INT_DATA_END	BIT(1)
@@ -149,6 +154,9 @@
 #define SDHCI_ACMD12_ERR	0x3C
 
 #define SDHCI_HOST_CONTROL2	0x3E
+#define SDHCI_HOST_VER4_ENABLE  BIT(12)
+#define SDHCI_HOST_ADDRESSING   BIT(13)
+#define SDHCI_HOST_ADMA2_LEN_MODE       BIT(10)
 #define  SDHCI_CTRL_UHS_MASK	0x0007
 #define  SDHCI_CTRL_UHS_SDR12	0x0000
 #define  SDHCI_CTRL_UHS_SDR25	0x0001
@@ -211,6 +219,10 @@
 
 /* 60-FB reserved */
 
+/*special register */
+#define SDHCI_UHS_2_TIMER_CNTRL  0xC2
+#define SDHCI_VENDOR_SPECIFIC_AREA 0xE8
+#define SDHCI_VENDOR2_SPECIFIC_AREA  0xEA
 #define SDHCI_SLOT_INT_STATUS	0xFC
 
 #define SDHCI_HOST_VERSION	0xFE
@@ -221,8 +233,75 @@
 #define   SDHCI_SPEC_100	0
 #define   SDHCI_SPEC_200	1
 #define   SDHCI_SPEC_300	2
-
+#define  SDHCI_EMMC_CTRL_R 0x2C
 #define SDHCI_GET_VERSION(x) (x->version & SDHCI_SPEC_VER_MASK)
+#define  SDHCI_CMD_MAX_TIMEOUT			3200
+#define  SDHCI_CMD_DEFAULT_TIMEOUT		100
+#define  SDHCI_READ_STATUS_TIMEOUT		1000
+
+/* PHY register */
+#define SDHCI_PHY_R_OFFSET			0x300
+
+#define SDHCI_P_PHY_CNFG           (SDHCI_PHY_R_OFFSET + 0x00)
+#define SDHCI_P_CMDPAD_CNFG        (SDHCI_PHY_R_OFFSET + 0x04)
+#define SDHCI_P_DATPAD_CNFG        (SDHCI_PHY_R_OFFSET + 0x06)
+#define SDHCI_P_CLKPAD_CNFG        (SDHCI_PHY_R_OFFSET + 0x08)
+#define SDHCI_P_STBPAD_CNFG        (SDHCI_PHY_R_OFFSET + 0x0A)
+#define SDHCI_P_RSTNPAD_CNFG       (SDHCI_PHY_R_OFFSET + 0x0C)
+#define SDHCI_P_PADTEST_CNFG       (SDHCI_PHY_R_OFFSET + 0x0E)
+#define SDHCI_P_PADTEST_OUT        (SDHCI_PHY_R_OFFSET + 0x10)
+#define SDHCI_P_PADTEST_IN         (SDHCI_PHY_R_OFFSET + 0x12)
+#define SDHCI_P_COMMDL_CNFG        (SDHCI_PHY_R_OFFSET + 0x1C)
+#define SDHCI_P_SDCLKDL_CNFG       (SDHCI_PHY_R_OFFSET + 0x1D)
+#define SDHCI_P_SDCLKDL_DC         (SDHCI_PHY_R_OFFSET + 0x1E)
+#define SDHCI_P_SMPLDL_CNFG        (SDHCI_PHY_R_OFFSET + 0x20)
+#define SDHCI_P_ATDL_CNFG          (SDHCI_PHY_R_OFFSET + 0x21)
+#define SDHCI_P_DLL_CTRL           (SDHCI_PHY_R_OFFSET + 0x24)
+#define SDHCI_P_DLL_CNFG1          (SDHCI_PHY_R_OFFSET + 0x25)
+#define SDHCI_P_DLL_CNFG2          (SDHCI_PHY_R_OFFSET + 0x26)
+#define SDHCI_P_DLLDL_CNFG         (SDHCI_PHY_R_OFFSET + 0x28)
+#define SDHCI_P_DLL_OFFST          (SDHCI_PHY_R_OFFSET + 0x29)
+#define SDHCI_P_DLLMST_TSTDC       (SDHCI_PHY_R_OFFSET + 0x2A)
+#define SDHCI_P_DLLLBT_CNFG        (SDHCI_PHY_R_OFFSET + 0x2C)
+#define SDHCI_P_DLL_STATUS         (SDHCI_PHY_R_OFFSET + 0x2E)
+#define SDHCI_P_DLLDBG_MLKDC       (SDHCI_PHY_R_OFFSET + 0x30)
+#define SDHCI_P_DLLDBG_SLKDC       (SDHCI_PHY_R_OFFSET + 0x32)
+
+#define PHY_CNFG_PHY_RSTN               0
+#define PHY_CNFG_PHY_PWRGOOD            1
+#define PHY_CNFG_PAD_SP                 16
+#define PHY_CNFG_PAD_SP_MSK             0xf
+#define PHY_CNFG_PAD_SN                 20
+#define PHY_CNFG_PAD_SN_MSK             0xf
+
+#define PAD_CNFG_RXSEL                  0
+#define PAD_CNFG_RXSEL_MSK              0x7
+#define PAD_CNFG_WEAKPULL_EN            3
+#define PAD_CNFG_WEAKPULL_EN_MSK        0x3
+#define PAD_CNFG_TXSLEW_CTRL_P          5
+#define PAD_CNFG_TXSLEW_CTRL_P_MSK      0xf
+#define PAD_CNFG_TXSLEW_CTRL_N          9
+#define PAD_CNFG_TXSLEW_CTRL_N_MSK      0xf
+
+#define COMMDL_CNFG_DLSTEP_SEL          0
+#define COMMDL_CNFG_DLOUT_EN            1
+
+#define SDCLKDL_CNFG_EXTDLY_EN          0
+#define SDCLKDL_CNFG_BYPASS_EN          1
+#define SDCLKDL_CNFG_INPSEL_CNFG        2
+#define SDCLKDL_CNFG_INPSEL_CNFG_MSK    0x3
+#define SDCLKDL_CNFG_UPDATE_DC          4
+
+#define SMPLDL_CNFG_EXTDLY_EN           0
+#define SMPLDL_CNFG_BYPASS_EN           1
+#define SMPLDL_CNFG_INPSEL_CNFG         2
+#define SMPLDL_CNFG_INPSEL_CNFG_MSK     0x3
+#define SMPLDL_CNFG_INPSEL_OVERRIDE     4
+
+#define ATDL_CNFG_EXTDLY_EN             0
+#define ATDL_CNFG_BYPASS_EN             1
+#define ATDL_CNFG_INPSEL_CNFG           2
+#define ATDL_CNFG_INPSEL_CNFG_MSK       0x3
 
 /*
  * End of controller registers.
