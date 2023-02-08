@@ -89,5 +89,18 @@
 			riscv,max-priority = <7>;
 			riscv,ndev = <2>;
 		};
+
+		sd: sdhc@704002B000 {
+			compatible = "bitmain,synopsys-sdhc";
+			bus-width = <4>;
+			reg = <0x70 0x4002B000 0x0 0x1000>;
+			max-frequency = <50000000>;
+			mmc_init_freq = <200000>;
+			mmc_trans_freq = <12000000>;
+			64_addressing;
+			has_phy;
+			index = <0x1>;
+			status = "okay";
+		};
 	};
 };
