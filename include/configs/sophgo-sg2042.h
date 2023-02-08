@@ -33,11 +33,20 @@
 	"scriptaddr=0x8c100000\0" \
 	"pxefile_addr_r=0x8c200000\0" \
 	"ramdisk_addr_r=0x8c300000\0" \
-	"kernel_addr=0x200000\0" \
-	"ramdisk_addr=0x30000000\0" \
+	"kernel_addr=0x80200000\0" \
+	"ramdisk_addr=0x88000000\0" \
 	"ramdisk_size=8000000\0" \
-	"dtb_addr=0x20000000\0" \
-	"bootcmd=booti ${kernel_addr} ${ramdisk_addr}:${ramdisk_size} ${dtb_addr}\0" \
+	"dtb_addr=0x8E000000\0" \
+	"mmcdev=0\0" \
+	"mmcpart=1\0" \
+	"kernel_image=/riscv64/Image\0" \
+	"ramdisk_image=/riscv64/initrd.img\0" \
+	"dtb_image=/riscv64/mango.dtb\0" \
+	"loadimage=echo Load kernel image..; fatload mmc ${mmcdev}:${mmcpart} ${kernel_addr} ${kernel_image}\0" \
+	"loadramdisk=echo Load ramdisk image..; fatload mmc ${mmcdev}:${mmcpart} ${ramdisk_addr} ${ramdisk_image}\0" \
+	"loaddtb=echo Load dtb image..; fatload mmc ${mmcdev}:${mmcpart} ${dtb_addr} ${dtb_image}\0" \
+	"bootsd=echo Boot from sd..; booti ${kernel_addr} ${ramdisk_addr}:${ramdisk_size} ${dtb_addr}\0" \
+	"bootcmd=run loadimage; run loadramdisk; run loaddtb; run bootsd\0" \
 	BOOTENV
 
 #endif /* __SOPHGO_SG2042_H */
