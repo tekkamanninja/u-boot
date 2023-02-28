@@ -495,6 +495,7 @@ static int label_boot(struct pxe_context *ctx, struct pxe_label *label)
 	char *zboot_argv[] = { "zboot", NULL, "0", NULL, NULL };
 	char *kernel_addr = NULL;
 	char *initrd_addr_str = NULL;
+	char *fdt_addr_fixed = NULL;
 	char initrd_filesize[10];
 	char initrd_str[28];
 	char mac_str[29] = "";
@@ -728,6 +729,12 @@ static int label_boot(struct pxe_context *ctx, struct pxe_label *label)
 
 	if (!bootm_argv[3])
 		bootm_argv[3] = env_get("fdt_addr");
+
+	fdt_addr_fixed = env_get("fdt_addr_fixed");
+	if (fdt_addr_fixed) {
+		bootm_argv[3] = fdt_addr_fixed;
+		printf("force use fdt fixed addr: %s\n", bootm_argv[3]);
+	}
 
 	kernel_addr_r = genimg_get_kernel_addr(kernel_addr);
 	buf = map_sysmem(kernel_addr_r, 0);

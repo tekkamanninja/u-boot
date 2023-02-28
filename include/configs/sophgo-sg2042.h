@@ -32,6 +32,7 @@
 	"kernel_comp_size=0x4000000\0" \
 	"ramdisk_addr_r=0x8d300000\0" \
 	"fdt_addr_r=0x8e000000\0" \
+	"fdt_addr_fixed=0x20000000\0" \
 	"scriptaddr=0x8e400000\0" \
 	"devtype=mmc\0" \
 	"devnum=0\0" \
