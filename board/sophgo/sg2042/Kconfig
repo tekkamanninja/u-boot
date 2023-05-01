@@ -19,7 +19,7 @@ config SYS_CONFIG_NAME
 config TEXT_BASE
 	default 0x80200000 if SPL
 	default 0x00200000 if !RISCV_SMODE
-	default 0x20200000 if RISCV_SMODE
+	default 0x02000000 if RISCV_SMODE
 
 config SPL_TEXT_BASE
 	default 0x08000000
