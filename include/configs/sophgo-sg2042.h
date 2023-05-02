@@ -34,9 +34,12 @@
 	"fdt_addr_r=0x8e000000\0" \
 	"fdt_addr_fixed=0x20000000\0" \
 	"scriptaddr=0x8e400000\0" \
+	"scriptfile=uEnv_sophgo_sg2042.txt\0" \
 	"devtype=mmc\0" \
 	"devnum=0\0" \
-	"bootcmd=run scan_dev_for_boot_part\0" \
+	"bootpart=2\0" \
+	"bootcmd=ext4load mmc ${devnum}:${bootpart} ${scriptaddr} ${scriptfile}; env import -t ${scriptaddr} ${filesize};boot\0" \
+	"PS1=[Sophgo]# \0" \
 	BOOTENV
 
 #endif /* __SOPHGO_SG2042_H */
