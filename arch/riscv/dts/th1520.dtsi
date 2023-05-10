@@ -128,6 +128,13 @@
 		#clock-cells = <0>;
 	};
 
+	dummy_apb: apb-clock {
+		compatible = "fixed-clock";
+		clock-frequency = <62500000>;
+		clock-output-names = "dummy_apb";
+		#clock-cells = <0>;
+	};
+
 	uart_sclk: uart-sclk-clock {
 		compatible = "fixed-clock";
 		clock-output-names = "uart_sclk";
@@ -161,6 +168,32 @@
 					      <&cpu1_intc 3>, <&cpu1_intc 7>,
 					      <&cpu2_intc 3>, <&cpu2_intc 7>,
 					      <&cpu3_intc 3>, <&cpu3_intc 7>;
+		};
+
+		gmac0: ethernet@ffe7070000 {
+			compatible = "snps,dwmac";
+			reg = <0xff 0xe7070000 0x0 0x2000>;
+			clocks = <&dummy_apb>;
+			clock-names = "stmmaceth";
+			snps,pbl = <32>;
+			snps,fixed-burst;
+
+			phy-mode = "rgmii-id";
+			phy-handle = <&phy_88E1111_a>;
+			status = "disabled";
+			mdio0 {
+				#address-cells = <1>;
+				#size-cells = <0>;
+				compatible = "snps,dwmac-mdio";
+
+				phy_88E1111_a: ethernet-phy@1 {
+					reg = <0x1>;
+				};
+
+				phy_88E1111_b: ethernet-phy@2 {
+					reg = <0x2>;
+				};
+			};
 		};
 
 		uart0: serial@ffe7014000 {
