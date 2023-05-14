@@ -177,6 +177,7 @@
 			clock-names = "stmmaceth";
 			snps,pbl = <32>;
 			snps,fixed-burst;
+			local-mac-address=[ 16 02 20 1c de b2 ];
 
 			phy-mode = "rgmii-id";
 			phy-handle = <&phy_88E1111_a>;
