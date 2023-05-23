@@ -1,0 +1,12 @@
+# SPDX-License-Identifier: GPL-2.0+
+#
+# Copyright (C) 2017-2020 Alibaba Group Holding Limited
+
+config RISCV_THEAD
+	bool
+	select ARCH_EARLY_INIT_R
+	imply CPU
+	imply CPU_RISCV
+	imply RISCV_TIMER
+	imply RISCV_RDTIME
+	imply CMD_CPU

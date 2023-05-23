@@ -145,6 +145,8 @@
 #define CSR_MARCHID		0xf12
 #define CSR_MHARTID		0xf14
 
+#define sync_is()   asm volatile (".long 0x01b0000b")
+
 #ifndef __ASSEMBLY__
 
 #define csr_swap(csr, val)					\
