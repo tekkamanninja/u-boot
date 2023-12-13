@@ -23,6 +23,25 @@ config ARM
 	select HAVE_PRIVATE_LIBGCC if !ARM64
 	select SUPPORT_OF_CONTROL
 
+config CSKY
+	bool "CSKY architecture"
+	select CREATE_ARCH_SYMLINK
+	select SUPPORT_OF_CONTROL
+	select OF_CONTROL
+	select DM
+	imply DM_SERIAL
+	imply DM_SPI
+	imply DM_SPI_FLASH
+	imply DM_MMC
+	imply CLK
+	imply MTD
+	imply CMD_DM
+	imply MMC_DW
+	imply SPL_LIBCOMMON_SUPPORT
+	imply SPL_LIBGENERIC_SUPPORT
+	imply SPL_SERIAL_SUPPORT
+	imply SPL_TIMER
+
 config M68K
 	bool "M68000 architecture"
 	select HAVE_PRIVATE_LIBGCC
@@ -287,6 +306,7 @@ config SYS_DISABLE_DCACHE_OPS
 
 source "arch/arc/Kconfig"
 source "arch/arm/Kconfig"
+source "arch/csky/Kconfig"
 source "arch/m68k/Kconfig"
 source "arch/microblaze/Kconfig"
 source "arch/mips/Kconfig"

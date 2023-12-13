@@ -97,6 +97,52 @@ int do_booti(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 	return ret;
 }
 
+/*******************************************************************/
+/* sboot - boot security image */
+/*******************************************************************/
+#ifdef CONFIG_TARGET_LIGHT_C910
+
+#if CONFIG_IS_ENABLED(LIGHT_SEC_UPGRADE)
+extern int light_vimage(int argc, char *const argv[]);
+int do_vimage(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
+{
+	if (light_vimage(argc, argv) != 0)
+		return 1;
+	return 0;
+}
+
+U_BOOT_CMD(
+	vimage, CONFIG_SYS_MAXARGS, 1, do_vimage, 
+	"verify image file with known pubkey which reside in father image or itself!", 
+	"vimage addr imgname[[tee/tf]	- verify specifed image resides in addr\n"
+);
+
+#endif
+
+#if CONFIG_IS_ENABLED(LIGHT_SEC_BOOT_WITH_VERIFY_VAL_A) || CONFIG_IS_ENABLED(LIGHT_SEC_BOOT_WITH_VERIFY_VAL_B) || CONFIG_IS_ENABLED(LIGHT_SEC_BOOT_WITH_VERIFY_ANT_REF) || CONFIG_IS_ENABLED(LIGHT_SEC_BOOT_WITH_VERIFY_LPI4A)
+#if CONFIG_IS_ENABLED(LIGHT_SEC_UPGRADE)
+extern int light_secboot(int argc, char * const argv[]);
+#endif
+int do_secboot(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
+{
+#if CONFIG_IS_ENABLED(LIGHT_SEC_UPGRADE)
+    if (light_secboot(argc, argv) != 0) {
+        run_command("reset", 0);
+        return -1;
+    }
+#endif
+	return 0;
+}
+U_BOOT_CMD(
+	secboot, CONFIG_SYS_MAXARGS, 1, do_secboot, 
+	"verify image file with known pubkey which reside in father image or itself!", 
+	"vimage addr imgname[[tee/tf]	- verify specifed image resides in addr\n"
+);
+
+#endif
+
+#endif
+
 #ifdef CONFIG_SYS_LONGHELP
 static char booti_help_text[] =
 	"[addr [initrd[:size]] [fdt]]\n"

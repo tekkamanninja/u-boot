@@ -10,7 +10,11 @@ ifeq ($(obj),$(src))
 prefix := spl
 src := $(patsubst $(prefix)/%,%,$(obj))
 ifeq ($(obj),$(src))
+prefix := ppl
+src := $(patsubst $(prefix)/%,%,$(obj))
+ifeq ($(obj),$(src))
 prefix := .
+endif
 endif
 endif
 

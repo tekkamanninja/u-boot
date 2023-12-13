@@ -12,6 +12,7 @@
 #include <linux/const.h>
 
 /* Status register flags */
+#define SR_MIE          _AC(0x00000008, UL) /* Machine Interrupt Enable */
 #define SR_SIE		_AC(0x00000002, UL) /* Supervisor Interrupt Enable */
 #define SR_SPIE		_AC(0x00000020, UL) /* Previous Supervisor IE */
 #define SR_SPP		_AC(0x00000100, UL) /* Previously Supervisor */
@@ -71,6 +72,7 @@
 
 /* SIE (Interrupt Enable) and SIP (Interrupt Pending) flags */
 #define MIE_MSIE		(_AC(0x1, UL) << IRQ_M_SOFT)
+#define MIE_MEIE		(_AC(0x1, UL) << IRQ_M_EXT)
 #define SIE_SSIE		(_AC(0x1, UL) << IRQ_S_SOFT)
 #define SIE_STIE		(_AC(0x1, UL) << IRQ_S_TIMER)
 #define SIE_SEIE		(_AC(0x1, UL) << IRQ_S_EXT)
@@ -103,6 +105,17 @@
 #define CSR_TIMEH		0xc81
 #define CSR_INSTRETH		0xc82
 #define CSR_MHARTID		0xf14
+
+#define CSR_SMPEN			0x7f3
+#define CSR_MTEE			0x7f4
+#define CSR_MCOR         0x7c2
+#define CSR_MHCR         0x7c1
+#define CSR_MCCR2        0x7c3
+#define CSR_MHINT        0x7c5
+#define CSR_MXSTATUS     0x7c0
+#define CSR_PLIC_BASE    0xfc1
+
+#define sync_is()   asm volatile (".long 0x01b0000b")
 
 #ifndef __ASSEMBLY__
 

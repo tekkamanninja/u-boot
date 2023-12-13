@@ -7,7 +7,6 @@
 
 #include <common.h>
 #include <malloc.h>
-#include <asm/arch/gpio.h>
 #include <asm/gpio.h>
 #include <asm/io.h>
 #include <dm.h>
@@ -36,7 +35,7 @@ struct gpio_dwapb_platdata {
 	const char	*name;
 	int		bank;
 	int		pins;
-	fdt_addr_t	base;
+	void __iomem*	base;
 };
 
 static int dwapb_gpio_direction_input(struct udevice *dev, unsigned pin)
@@ -172,7 +171,7 @@ static int gpio_dwapb_bind(struct udevice *dev)
 		if (!plat)
 			return -ENOMEM;
 
-		plat->base = base;
+		plat->base = (void *)base;
 		plat->bank = bank;
 		plat->pins = ofnode_read_u32_default(node, "snps,nr-gpios", 0);
 

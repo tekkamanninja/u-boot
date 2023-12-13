@@ -1,5 +1,8 @@
 menu "SPL / TPL"
 
+config SUPPORT_PPL
+	bool
+
 config SUPPORT_SPL
 	bool
 
@@ -8,6 +11,13 @@ config SUPPORT_TPL
 
 config SPL_DFU_NO_RESET
 	bool
+
+config PPL
+	bool
+	depends on SUPPORT_PPL
+	prompt "Enable PPL"
+	help
+	  If you want to build PPL as well as the normal image, say Y.
 
 config SPL
 	bool

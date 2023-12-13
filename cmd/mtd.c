@@ -238,6 +238,218 @@ static int mtd_special_write_oob(struct mtd_info *mtd, u64 off,
 	return ret;
 }
 
+static int do_mtd_perf(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
+{
+	#define TEST_DATA_PATTERN (0xaa)
+	bool scrub,write_empty_pages = false, has_pages = false;
+	u64 start_off, off, len, remaining;
+	struct mtd_oob_ops io_op = {};
+	struct erase_info erase_op = {};
+	uint user_wr_addr = 0,user_rd_addr, npages;
+	struct mtd_info *mtd;
+	u8 *buf,*read_buf,*write_buf;
+	int ret;
+	uint32_t start_us,end_us;
+	uint erase_speed,write_speed,read_speed;
+	if (argc < 6)
+		return CMD_RET_USAGE;
+
+	/* get mtd_info handle  */
+	mtd = get_mtd_by_name(argv[1]);
+	if (IS_ERR_OR_NULL(mtd))
+		return CMD_RET_FAILURE;
+
+	if (mtd->type == MTD_NANDFLASH || mtd->type == MTD_MLCNANDFLASH)
+		has_pages = true;
+	/* get user_wr_addr */
+	user_wr_addr = simple_strtoul(argv[2], NULL, 16);
+	if (!user_wr_addr) {
+		printf("Could not map/allocate the user buffer\n");
+		ret = CMD_RET_FAILURE;
+		goto out_put_mtd;
+	}
+
+	/* get user_rd_addr */
+	user_rd_addr = simple_strtoul(argv[3], NULL, 16);
+	if (!user_rd_addr) {
+		printf("Could not map/allocate the user buffer\n");
+		ret = CMD_RET_FAILURE;
+		goto out_put_mtd;
+	}
+
+	/* get offset from mtd-device */
+	start_off = simple_strtoul(argv[4], NULL, 16);
+	if (!mtd_is_aligned_with_min_io_size(mtd, start_off)) {
+		printf("Offset not aligned with a page (0x%x)\n",
+		       mtd->writesize);
+		ret = CMD_RET_FAILURE;
+		goto out_put_mtd;
+	}
+
+	/* get size for read or write */
+	len = simple_strtoul(argv[5], NULL, 16);
+	len = (len == 0)?mtd->writesize : len;
+
+	if (!mtd_is_aligned_with_min_io_size(mtd, len)) {
+		len = round_up(len, mtd->writesize);
+		printf("Size not on a page boundary (0x%x), rounding to 0x%llx\n",
+		       mtd->writesize, len);
+	}
+
+	/* init test-data pattern */
+	buf = map_sysmem(user_wr_addr,0);
+	memset((void*)buf,TEST_DATA_PATTERN,len);
+	buf = map_sysmem(user_rd_addr,0);
+	memset((void*)buf,0,len);
+
+
+	remaining = len;
+	npages = mtd_len_to_pages(mtd, len);
+
+	if (has_pages)
+		printf("%s %lld byte(s) (%d page(s)) at offset 0x%08llx\n",
+		       "read/write", len, npages, start_off);
+	else
+		printf("%s %lld byte(s) at offset 0x%08llx\n",
+		       "Read/Write", len, start_off);
+
+	/* erase test */
+	off = start_off;
+	if (!mtd_is_aligned_with_block_size(mtd, off)) {
+		printf("Offset not aligned with a block (0x%x)\n",
+		       mtd->erasesize);
+		ret = CMD_RET_FAILURE;
+		goto out_put_mtd;
+	}
+
+	if (!mtd_is_aligned_with_block_size(mtd, len)) {
+		printf("Size not a multiple of a block (0x%x)\n",
+		       mtd->erasesize);
+		ret = CMD_RET_FAILURE;
+		goto out_put_mtd;
+	}
+
+	printf("Erasing 0x%08llx ... 0x%08llx (%d eraseblock(s))\n",
+	       off, off + len - 1, mtd_div_by_eb(len, mtd));
+	scrub = true;
+	erase_op.mtd = mtd;
+	erase_op.addr = off;
+	erase_op.len = len;
+	erase_op.scrub = scrub;
+	start_us = timer_get_us();
+	while (erase_op.len) {
+		ret = mtd_erase(mtd, &erase_op);
+		/* Abort if its not a bad block error */
+		if (ret != -EIO)
+			break;
+
+		printf("Skipping bad block at 0x%08llx\n", erase_op.fail_addr);
+
+		/* Skip bad block and continue behind it */
+		erase_op.len -= erase_op.fail_addr - erase_op.addr;
+		erase_op.len -= mtd->erasesize;
+		erase_op.addr = erase_op.fail_addr + mtd->erasesize;
+	}
+	end_us = timer_get_us();
+	erase_speed = len * 1000 /(end_us - start_us);
+	/* write test  */
+	buf = map_sysmem(user_wr_addr,0);
+	io_op.mode =  MTD_OPS_RAW;
+	io_op.len = has_pages ? mtd->writesize : len;
+	io_op.ooblen = 0;
+	io_op.datbuf = buf;
+	io_op.oobbuf = NULL;
+
+	/* Search for the first good block after the given offset */
+	off = start_off;
+	while (mtd_block_isbad(mtd, off))
+		off += mtd->erasesize;
+	/* Loop over the pages to do the actual read/write */
+	start_us = timer_get_us();
+	while (remaining) {
+		/* Skip the block if it is bad */
+		if (mtd_is_aligned_with_block_size(mtd, off) &&
+		    mtd_block_isbad(mtd, off)) {
+			off += mtd->erasesize;
+			continue;
+		}
+
+		ret = mtd_special_write_oob(mtd, off, &io_op,
+						    write_empty_pages, 0);
+
+		if (ret) {
+			printf("Failure while %s at offset 0x%llx\n",
+			       "reading", off);
+			break;
+		}
+
+		off += io_op.retlen;
+		remaining -= io_op.retlen;
+		io_op.datbuf += io_op.retlen;
+		io_op.oobbuf += io_op.oobretlen;
+	}
+	end_us = timer_get_us();
+	write_speed = len * 1000/(end_us - start_us);
+
+	/* read test  */
+	remaining = len;
+	npages = mtd_len_to_pages(mtd, len);
+	buf = map_sysmem(user_rd_addr,0);
+	io_op.mode =  MTD_OPS_RAW;
+	io_op.len = has_pages ? mtd->writesize : len;
+	io_op.ooblen = 0;
+	io_op.datbuf = buf;
+	io_op.oobbuf = NULL;
+
+	/* Search for the first good block after the given offset */
+	off = start_off;
+	while (mtd_block_isbad(mtd, off))
+		off += mtd->erasesize;
+	/* Loop over the pages to do the actual read/write */
+	start_us = timer_get_us();
+	while (remaining) {
+		/* Skip the block if it is bad */
+		if (mtd_is_aligned_with_block_size(mtd, off) &&
+		    mtd_block_isbad(mtd, off)) {
+			off += mtd->erasesize;
+			continue;
+		}
+
+		ret = mtd_read_oob(mtd, off, &io_op);
+
+		if (ret) {
+			printf("Failure while %s at offset 0x%llx\n",
+			       "reading", off);
+			break;
+		}
+
+		off += io_op.retlen;
+		remaining -= io_op.retlen;
+		io_op.datbuf += io_op.retlen;
+		io_op.oobbuf += io_op.oobretlen;
+	}
+	end_us = timer_get_us();
+	read_speed = len * 1000/(end_us - start_us);
+
+	/*check result and output perf result*/
+	read_buf = map_sysmem(user_rd_addr,0);
+	write_buf = map_sysmem(user_wr_addr,0);
+	if (memcmp((const void*)read_buf,(void*)write_buf,len) ){
+		printf("write != read ,perf test failed\n");
+		ret = CMD_RET_FAILURE;
+	}else {
+		printf("%s perf test success\n",mtd->name);
+		printf("erase_speed: %u KB \nwrite_speed: %u KB \nread_speed: %u KB\n",
+				erase_speed,write_speed,read_speed);
+		ret = CMD_RET_SUCCESS;
+	}
+
+
+out_put_mtd:
+	put_mtd_device(mtd);
+	#undef TEST_DATA_PATTERN
+	return ret;
+}
 static int do_mtd_io(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 {
 	bool dump, read, raw, woob, write_empty_pages, has_pages = false;
@@ -330,7 +542,6 @@ static int do_mtd_io(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 	off = start_off;
 	while (mtd_block_isbad(mtd, off))
 		off += mtd->erasesize;
-
 	/* Loop over the pages to do the actual read/write */
 	while (remaining) {
 		/* Skip the block if it is bad */
@@ -357,7 +568,6 @@ static int do_mtd_io(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 		io_op.datbuf += io_op.retlen;
 		io_op.oobbuf += io_op.oobretlen;
 	}
-
 	if (!ret && dump)
 		mtd_dump_device_buf(mtd, start_off, buf, len, woob);
 
@@ -425,10 +635,8 @@ static int do_mtd_erase(cmd_tbl_t *cmdtp, int flag, int argc,
 	erase_op.addr = off;
 	erase_op.len = len;
 	erase_op.scrub = scrub;
-
 	while (erase_op.len) {
 		ret = mtd_erase(mtd, &erase_op);
-
 		/* Abort if its not a bad block error */
 		if (ret != -EIO)
 			break;
@@ -440,7 +648,6 @@ static int do_mtd_erase(cmd_tbl_t *cmdtp, int flag, int argc,
 		erase_op.len -= mtd->erasesize;
 		erase_op.addr = erase_op.fail_addr + mtd->erasesize;
 	}
-
 	if (ret && ret != -EIO)
 		ret = CMD_RET_FAILURE;
 	else
@@ -527,6 +734,7 @@ static char mtd_help_text[] =
 	"mtd dump[.raw][.oob]                  <name>        [<off> [<size>]]\n"
 	"mtd write[.raw][.oob][.dontskipff]    <name> <addr> [<off> [<size>]]\n"
 	"mtd erase[.dontskipbad]               <name>        [<off> [<size>]]\n"
+	"mtd perf                              <name> <addr> <addr> [<off> [<size>]]\n"
 	"\n"
 	"Specific functions:\n"
 	"mtd bad                               <name>\n"
@@ -546,6 +754,8 @@ static char mtd_help_text[] =
 
 U_BOOT_CMD_WITH_SUBCMDS(mtd, "MTD utils", mtd_help_text,
 		U_BOOT_SUBCMD_MKENT(list, 1, 1, do_mtd_list),
+		U_BOOT_SUBCMD_MKENT_COMPLETE(perf, 6, 0, do_mtd_perf,
+					     mtd_name_complete),
 		U_BOOT_SUBCMD_MKENT_COMPLETE(read, 5, 0, do_mtd_io,
 					     mtd_name_complete),
 		U_BOOT_SUBCMD_MKENT_COMPLETE(write, 5, 0, do_mtd_io,

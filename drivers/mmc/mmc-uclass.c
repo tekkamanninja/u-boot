@@ -436,7 +436,9 @@ U_BOOT_DRIVER(mmc_blk) = {
     CONFIG_IS_ENABLED(MMC_HS200_SUPPORT) || \
     CONFIG_IS_ENABLED(MMC_HS400_SUPPORT)
 	.remove		= mmc_blk_remove,
+#ifndef CONFIG_TARGET_LIGHT_C910
 	.flags		= DM_FLAG_OS_PREPARE,
+#endif
 #endif
 };
 #endif /* CONFIG_BLK */

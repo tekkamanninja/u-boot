@@ -13,6 +13,9 @@
 
 #ifndef __ASSEMBLY__
 
+#define RISCV_ACQUIRE_BARRIER       "\tfence r , rw\n"
+#define RISCV_RELEASE_BARRIER       "\tfence rw,  w\n"
+
 #define nop()		__asm__ __volatile__ ("nop")
 
 #define RISCV_FENCE(p, s) \
@@ -28,20 +31,18 @@
 #define __smp_rmb()	RISCV_FENCE(r,r)
 #define __smp_wmb()	RISCV_FENCE(w,w)
 
-#define __smp_store_release(p, v)					\
-do {									\
-	compiletime_assert_atomic_type(*p);				\
-	RISCV_FENCE(rw,w);						\
-	WRITE_ONCE(*p, v);						\
-} while (0)
+#define __smp_store_release(p, v)   \
+	do {                        \
+		RISCV_FENCE(rw, w); \
+		*(p) = (v);         \
+	} while (0)
 
-#define __smp_load_acquire(p)						\
-({									\
-	typeof(*p) ___p1 = READ_ONCE(*p);				\
-	compiletime_assert_atomic_type(*p);				\
-	RISCV_FENCE(r,rw);						\
-	___p1;								\
-})
+#define __smp_load_acquire(p)            \
+	({                               \
+		typeof(*p) ___p1 = *(p); \
+		RISCV_FENCE(r, rw);      \
+		___p1;                   \
+	})
 
 /*
  * This is a very specific barrier: it's currently only used in two places in

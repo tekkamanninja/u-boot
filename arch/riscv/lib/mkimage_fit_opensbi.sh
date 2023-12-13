@@ -17,7 +17,7 @@ if [ -z "$OPENSBI_LOAD_ADDR" ]; then
 fi
 
 if [ ! -f $OPENSBI ]; then
-	echo "WARNING: OpenSBI binary \"$OPENSBI\" not found, resulting binary is not functional." >&2
+	#echo "WARNING: OpenSBI binary \"$OPENSBI\" not found, resulting binary is not functional." >&2
 	OPENSBI=/dev/null
 fi
 

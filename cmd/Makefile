@@ -166,6 +166,8 @@ obj-$(CONFIG_CMD_GPT) += gpt.o
 obj-$(CONFIG_CMD_ETHSW) += ethsw.o
 obj-$(CONFIG_CMD_AXI) += axi.o
 
+obj-$(CONFIG_TARGET_LIGHT_FM_C910_VAL_SV) += trng_cmd.o
+
 # Power
 obj-$(CONFIG_CMD_PMIC) += pmic.o
 obj-$(CONFIG_CMD_REGULATOR) += regulator.o
@@ -174,6 +176,9 @@ obj-$(CONFIG_CMD_BLOB) += blob.o
 
 # Android Verified Boot 2.0
 obj-$(CONFIG_CMD_AVB) += avb.o
+
+obj-$(CONFIG_DDR_SCAN) += ddrscan.o
+obj-$(CONFIG_DDR_PRBS_TEST) += prbs.o queue.o
 
 obj-$(CONFIG_ARM) += arm/
 obj-$(CONFIG_RISCV) += riscv/

@@ -208,6 +208,11 @@ gd_t *global_data;
 "	ld	r10, [r10, %1]\n" \
 "	j	[r10]\n" \
 	: : "i"(offsetof(gd_t, jt)), "i"(FO(x)) : "r10");
+#elif defined(CONFIG_CSKY)
+#define EXPORT_FUNC(f, a, x, ...) \
+	asm volatile( \
+"	bkpt\n" \
+	);
 #elif defined(CONFIG_XTENSA)
 /*
  * Global data ptr is in global_data, jump table ptr is in jt.

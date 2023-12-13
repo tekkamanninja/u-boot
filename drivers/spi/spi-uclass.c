@@ -311,7 +311,6 @@ int spi_get_bus_and_cs(int busnum, int cs, int speed, int mode,
 	struct dm_spi_slave_platdata *plat;
 	bool created = false;
 	int ret;
-
 #if CONFIG_IS_ENABLED(OF_PLATDATA)
 	ret = uclass_first_device_err(UCLASS_SPI, &bus);
 #else
@@ -366,12 +365,16 @@ int spi_get_bus_and_cs(int busnum, int cs, int speed, int mode,
 
 	plat = dev_get_parent_platdata(dev);
 
+#if 0
 	/* get speed and mode from platdata when available */
 	if (plat->max_hz) {
 		speed = plat->max_hz;
 		mode = plat->mode;
 	}
+#else
+	/* set speed and mode by user */
 	ret = spi_set_speed_mode(bus, speed, mode);
+#endif
 	if (ret)
 		goto err;
 

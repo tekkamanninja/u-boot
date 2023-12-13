@@ -10,6 +10,7 @@
 #include <mmc.h>
 #include <sparse_format.h>
 #include <image-sparse.h>
+#include <stdlib.h>
 
 static int curr_device = -1;
 
@@ -101,9 +102,10 @@ static struct mmc *init_mmc_device(int dev, bool force_init)
 		return NULL;
 	}
 
+#if !defined(CONFIG_MMC_BROKEN_CD)
 	if (!mmc_getcd(mmc))
 		force_init = true;
-
+#endif
 	if (force_init)
 		mmc->has_init = 0;
 	if (mmc_init(mmc))
@@ -317,6 +319,94 @@ static int do_mmc_read(cmd_tbl_t *cmdtp, int flag,
 	return (n == cnt) ? CMD_RET_SUCCESS : CMD_RET_FAILURE;
 }
 
+static int do_mmc_memset(cmd_tbl_t *cmdtp, int flag,
+		       int argc, char * const argv[])
+{
+	u32 cnt;
+	void *addr;
+
+	addr = (void *)simple_strtoul(argv[1], NULL, 16);
+	cnt = simple_strtoul(argv[2], NULL, 10);
+
+	memset(addr, 0xff, cnt);
+
+	printf("\nMMC memset addr:%p  cnt: %d\n", addr, cnt);
+
+	return CMD_RET_SUCCESS;
+}
+
+static int do_mmc_cmp(cmd_tbl_t *cmdtp, int flag,
+		       int argc, char * const argv[])
+{
+	int ret = CMD_RET_SUCCESS, i = 0;
+	uint8_t *buf1 = malloc(512);
+	uint8_t *buf2 = malloc(512);
+	struct mmc *mmc;
+	u32 blk1, blk2, cnt, n;
+
+	if (argc != 4)
+		return CMD_RET_USAGE;
+
+	blk1 = simple_strtoul(argv[1], NULL, 16);
+	blk2 = simple_strtoul(argv[2], NULL, 16);
+	cnt = simple_strtoul(argv[3], NULL, 10);
+
+	mmc = init_mmc_device(curr_device, false);
+	if (!mmc)
+		return CMD_RET_FAILURE;
+
+	printf("\nMMC cmp: dev # %d, block1 # %d, block2 # %d, count %d ... ",
+	       curr_device, blk1, blk2, cnt);
+
+	while(i < cnt) {
+		n = blk_dread(mmc_get_blk_desc(mmc), blk1 + i, 1, buf1);
+		if (n != 1) {
+		    ret = CMD_RET_FAILURE;
+		    break;
+		}
+
+		n = blk_dread(mmc_get_blk_desc(mmc), blk2 + i, 1, buf2);
+		if (n != 1) {
+		    ret = CMD_RET_FAILURE;
+		    break;
+		}
+
+		if (memcmp(buf1, buf2, 512) != 0) {
+		    ret = CMD_RET_FAILURE;
+		    break;
+		}
+		i++;
+	}
+
+	printf("blocks cmp : %s\n", (ret == CMD_RET_SUCCESS) ? "OK" : "ERROR");
+	return ret;
+}
+
+static int do_mem_cmp(cmd_tbl_t *cmdtp, int flag,
+		       int argc, char * const argv[])
+{
+	u32 size;
+	int ret = CMD_RET_SUCCESS;
+	void *addr1, *addr2;
+
+	if (argc != 4)
+		return CMD_RET_USAGE;
+
+	addr1 = (void *)simple_strtoul(argv[1], NULL, 16);
+	addr2 = (void *)simple_strtoul(argv[2], NULL, 16);
+	size = simple_strtoul(argv[3], NULL, 10);
+
+	printf("\nmemcmp addr1 0x%p, addr2 0x%p, size %u\n", addr1, addr2, size);
+
+	if (memcmp(addr1, addr2, size) != 0) {
+		ret = CMD_RET_FAILURE;
+	}
+
+	printf("memcmp : %s\n", (ret == CMD_RET_SUCCESS) ? "OK" : "ERROR");
+
+	return ret;
+}
+
 #if CONFIG_IS_ENABLED(CMD_MMC_SWRITE)
 static lbaint_t mmc_sparse_write(struct sparse_storage *info, lbaint_t blk,
 				 lbaint_t blkcnt, const void *buffer)
@@ -383,6 +473,13 @@ static int do_mmc_sparse_write(cmd_tbl_t *cmdtp, int flag,
 #endif
 
 #if CONFIG_IS_ENABLED(MMC_WRITE)
+static int do_mmc_test(cmd_tbl_t *cmdtp, int flag,
+			int argc, char * const argv[])
+{
+	memset((void *)0x10000000, 0xff, 1024);
+	return CMD_RET_SUCCESS;
+}
+
 static int do_mmc_write(cmd_tbl_t *cmdtp, int flag,
 			int argc, char * const argv[])
 {
@@ -443,10 +540,31 @@ static int do_mmc_erase(cmd_tbl_t *cmdtp, int flag,
 }
 #endif
 
+#ifdef CONFIG_TARGET_LIGHT_C910
+extern int snps_sdhci_init(struct mmc *mmc);
+#endif
+
 static int do_mmc_rescan(cmd_tbl_t *cmdtp, int flag,
 			 int argc, char * const argv[])
 {
 	struct mmc *mmc;
+
+#ifdef CONFIG_TARGET_LIGHT_C910
+	mmc = find_mmc_device(curr_device);
+	if (!mmc) {
+		printf("no mmc device at slot %x\n", curr_device);
+		return CMD_RET_FAILURE;
+	}
+
+	if (0 != snps_mmc_init(mmc))
+		return CMD_RET_FAILURE;
+
+	if (IS_SD(mmc)) {
+		sd_resetore_sd_modes_by_pref();
+	} else {
+		mmc_resetore_mmc_modes_by_pref();
+	}
+#endif
 
 	mmc = init_mmc_device(curr_device, true);
 	if (!mmc)
@@ -454,6 +572,96 @@ static int do_mmc_rescan(cmd_tbl_t *cmdtp, int flag,
 
 	return CMD_RET_SUCCESS;
 }
+
+extern volatile uint32_t DELAY_LANE;
+extern volatile int manual_set_delay ;
+static int do_mmc_set_delay_lane(cmd_tbl_t *cmdtp, int flag,
+	       int argc, char * const argv[])
+{
+	struct mmc *mmc;
+	u32 val;
+
+	val = simple_strtoul(argv[1], NULL, 10);
+	DELAY_LANE = val;
+	printf("set DELAY_LANE = %d\n", DELAY_LANE);
+
+	mmc = find_mmc_device(curr_device);
+	if (!mmc) {
+		printf("no mmc device at slot %x\n", curr_device);
+		goto RET_FAILURE;
+	}
+	manual_set_delay = 1;
+	if (0 != snps_mmc_init(mmc))
+		goto RET_FAILURE;
+
+	mmc = init_mmc_device(curr_device, true);
+	if (!mmc)
+		goto RET_FAILURE;
+	
+	manual_set_delay = 0;
+	return CMD_RET_SUCCESS;
+
+RET_FAILURE:
+	manual_set_delay = 0;
+	return CMD_RET_FAILURE;
+}
+
+static int do_mmc_turning(cmd_tbl_t *cmdtp, int flag,
+	       int argc, char * const argv[])
+{
+	struct mmc *mmc;
+	int i = 0, n;
+	int stop_on_ok = 1;
+	if(argc > 1 && (!strncmp(argv[1],"cont",4))){
+		stop_on_ok = 0;
+	}
+	for(i = 0; i <= 128; i++) {
+		DELAY_LANE = i;
+		printf("set DELAY_LANE = %d\n", DELAY_LANE);
+
+		mmc = find_mmc_device(curr_device);
+
+		if (!mmc) {
+			printf("no mmc device at slot %x\n", curr_device);
+			return CMD_RET_FAILURE;
+		}
+
+		manual_set_delay = 1;
+		if (0 != snps_mmc_init(mmc)) {
+			printf("Error: mmc init error!\n");
+			manual_set_delay = 0;
+			return CMD_RET_FAILURE;
+		}
+
+		mmc = init_mmc_device(curr_device, true);
+		if (!mmc) {
+			continue;
+		}
+
+		if (mmc_getwp(mmc) == 1) {
+			printf("Error: card is write protected!\n");
+			manual_set_delay = 0;
+			return CMD_RET_FAILURE;
+		}
+
+		n = blk_dwrite(mmc_get_blk_desc(mmc), 0, 1, 0);
+		if (n == 1) {
+			printf("blocks written: %s\n", "OK" );
+			manual_set_delay = 0;
+			if(stop_on_ok)
+				return CMD_RET_SUCCESS;
+		} else {
+			printf("written: %s\n", "error");
+		}
+	}
+	manual_set_delay = 0;
+	if (i > 128) {
+		return CMD_RET_FAILURE;
+	}
+
+	return CMD_RET_SUCCESS;
+}
+
 static int do_mmc_part(cmd_tbl_t *cmdtp, int flag,
 		       int argc, char * const argv[])
 {
@@ -847,6 +1055,85 @@ static int do_mmc_setdsr(cmd_tbl_t *cmdtp, int flag,
 	return ret;
 }
 
+static int do_mmc_set_speed(cmd_tbl_t *cmdtp, int flag,
+		       int argc, char * const argv[])
+{
+	struct mmc *mmc;
+	u32 mode, width;
+	int ret = CMD_RET_SUCCESS;
+
+	if (argc != 3)
+		return CMD_RET_USAGE;
+
+	mode = simple_strtoul(argv[1], NULL, 10);
+	width = simple_strtoul(argv[2], NULL, 10);
+	mmc = find_mmc_device(curr_device);
+	if (!mmc) {
+		printf("no mmc device at slot %x\n", curr_device);
+		return CMD_RET_FAILURE;
+	}
+	if (!mmc)
+		return CMD_RET_FAILURE;
+
+	printf("\nMMC set mode: dev # %u\n", mode);
+	mmc->bus_width = width;
+
+	if (IS_SD(mmc)) {
+		if (sd_select_speed_mode(mmc, mode) != 0) {
+			ret = CMD_RET_FAILURE;
+		}
+	} else {
+		if (mmc_select_speed_mode(mmc, mode) != 0) {
+			ret = CMD_RET_FAILURE;
+		}
+	}
+
+	if (0 != snps_mmc_init(mmc))
+		return CMD_RET_FAILURE;
+
+	mmc = init_mmc_device(curr_device, true);
+	if (!mmc)
+		return CMD_RET_FAILURE;
+
+#ifndef CONFIG_TARGET_LIGHT_C910
+	if (IS_SD(mmc)) {
+		sd_resetore_sd_modes_by_pref();
+	} else {
+		mmc_resetore_mmc_modes_by_pref();
+	}
+#endif
+
+	printf("set mode: %s\n", (ret == CMD_RET_SUCCESS) ? "OK" : "ERROR");
+
+	return ret;
+}
+
+static int do_mmc_set_clock_freq(cmd_tbl_t *cmdtp, int flag,
+		       int argc, char * const argv[])
+{
+	struct mmc *mmc;
+	u32 freq;
+	int ret = CMD_RET_SUCCESS;
+
+	if (argc != 2)
+		return CMD_RET_USAGE;
+
+	freq = simple_strtoul(argv[1], NULL, 10);
+	mmc = init_mmc_device(curr_device, false);
+	if (!mmc)
+		return CMD_RET_FAILURE;
+
+	printf("\nMMC set freq :%u\n", freq);
+
+	if (mmc_set_clock(mmc, freq, false) != 0) {
+		ret = CMD_RET_FAILURE;
+	}
+
+	printf("set freq: %s\n", (ret == CMD_RET_SUCCESS) ? "OK" : "ERROR");
+
+	return ret;
+}
+
 #ifdef CONFIG_CMD_BKOPS_ENABLE
 static int do_mmc_bkops_enable(cmd_tbl_t *cmdtp, int flag,
 				   int argc, char * const argv[])
@@ -875,14 +1162,22 @@ static int do_mmc_bkops_enable(cmd_tbl_t *cmdtp, int flag,
 static cmd_tbl_t cmd_mmc[] = {
 	U_BOOT_CMD_MKENT(info, 1, 0, do_mmcinfo, "", ""),
 	U_BOOT_CMD_MKENT(read, 4, 1, do_mmc_read, "", ""),
+	U_BOOT_CMD_MKENT(memset, 4, 1, do_mmc_memset, "", ""),
+	U_BOOT_CMD_MKENT(cmp, 4, 1, do_mmc_cmp, "", ""),
+	U_BOOT_CMD_MKENT(memcmp, 4, 1, do_mem_cmp, "", ""),
+	U_BOOT_CMD_MKENT(set_speed, 4, 1, do_mmc_set_speed, "", ""),
+	U_BOOT_CMD_MKENT(set_clk, 4, 1, do_mmc_set_clock_freq, "", ""),
 #if CONFIG_IS_ENABLED(MMC_WRITE)
 	U_BOOT_CMD_MKENT(write, 4, 0, do_mmc_write, "", ""),
+	U_BOOT_CMD_MKENT(test, 4, 0, do_mmc_test, "", ""),
 	U_BOOT_CMD_MKENT(erase, 3, 0, do_mmc_erase, "", ""),
 #endif
 #if CONFIG_IS_ENABLED(CMD_MMC_SWRITE)
 	U_BOOT_CMD_MKENT(swrite, 3, 0, do_mmc_sparse_write, "", ""),
 #endif
 	U_BOOT_CMD_MKENT(rescan, 1, 1, do_mmc_rescan, "", ""),
+	U_BOOT_CMD_MKENT(set_delay, 4, 1, do_mmc_set_delay_lane, "", ""),
+	U_BOOT_CMD_MKENT(turning, 4, 1, do_mmc_turning, "", ""),
 	U_BOOT_CMD_MKENT(part, 1, 1, do_mmc_part, "", ""),
 	U_BOOT_CMD_MKENT(dev, 3, 0, do_mmc_dev, "", ""),
 	U_BOOT_CMD_MKENT(list, 1, 1, do_mmc_list, "", ""),
@@ -936,11 +1231,33 @@ U_BOOT_CMD(
 	"info - display info of the current MMC device\n"
 	"mmc read addr blk# cnt\n"
 	"mmc write addr blk# cnt\n"
+	"mmc cmp blk1 blk2# cnt\n"
+	"mmc memcmp addr1 addr2# size\n"
+	"mmc set_speed speed_mode bus_width(1, 4, 8):\n"
+    "    - 0: MMC_LEGACY(emmc supported),\n"
+    "    - 1: SD_LEGACY(sd supported),\n"
+    "    - 2: MMC_HS(emmc supported),\n"
+    "    - 3: SD_HS(sd supported),\n"
+    "    - 4: MMC_HS_52 (emmc supported),\n"
+    "    - 5: MMC_DDR_52(not supported),\n"
+    "    - 6: UHS_SDR12(sd supported),\n"
+    "    - 7: UHS_SDR25(sd supported),\n"
+    "    - 8: UHS_SDR50(sd supported),\n"
+    "    - 9: UHS_DDR50(not supported),\n"
+    "    - 10: UHS_SDR104(sd supported),\n"
+    "    - 11: MMC_HS_200(emmc supported),\n"
+    "    - 12: MMC_HS_400(emmc supported),\n"
+    "    - 13: MMC_HS_400_ES(not supported),\n"
+    "mmc set_clk freq\n"
 #if CONFIG_IS_ENABLED(CMD_MMC_SWRITE)
 	"mmc swrite addr blk#\n"
 #endif
 	"mmc erase blk# cnt\n"
 	"mmc rescan\n"
+	"mmc set_delay # val - set clk out delay mannaul,reinit host and rescan dev\n"
+	"mmc turning [continue] - loop test for clk delay form 0 to 128, reinit host and rescan dev\n"
+	"             - without arg [continue] exit once init and write ok\n"
+	"mmc memset addr # length - set mem addr 0xff with length  '# length' \n"
 	"mmc part - lists available partition on current mmc device\n"
 	"mmc dev [dev] [part] - show or set current mmc device [partition]\n"
 	"mmc list - lists available devices\n"

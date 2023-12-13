@@ -18,6 +18,10 @@ ifeq ($(shell grep -q '^CONFIG_TPL=y' include/config/auto.conf 2>/dev/null && ec
 __all: tpl/include/autoconf.mk
 endif
 
+ifeq ($(shell grep -q '^CONFIG_PPL=y' include/config/auto.conf 2>/dev/null && echo y),y)
+__all: ppl/include/autoconf.mk
+endif
+
 include include/config/auto.conf
 
 include scripts/Kbuild.include
@@ -84,6 +88,10 @@ tpl/u-boot.cfg: include/config.h FORCE
 	$(Q)mkdir -p $(dir $@)
 	$(call cmd,u_boot_cfg,-DCONFIG_SPL_BUILD -DCONFIG_TPL_BUILD)
 
+ppl/u-boot.cfg: include/config.h FORCE
+	$(Q)mkdir -p $(dir $@)
+	$(call cmd,u_boot_cfg,-DCONFIG_PPL_BUILD)
+
 include/autoconf.mk: u-boot.cfg
 	$(call cmd,autoconf)
 
@@ -92,6 +100,10 @@ spl/include/autoconf.mk: spl/u-boot.cfg
 	$(call cmd,autoconf)
 
 tpl/include/autoconf.mk: tpl/u-boot.cfg
+	$(Q)mkdir -p $(dir $@)
+	$(call cmd,autoconf)
+
+ppl/include/autoconf.mk: ppl/u-boot.cfg
 	$(Q)mkdir -p $(dir $@)
 	$(call cmd,autoconf)
 

@@ -24,6 +24,8 @@
 #include <power/regulator.h>
 #include "designware.h"
 
+static struct mii_dev *g_mii_bus = NULL;
+
 static int dw_mdio_read(struct mii_dev *bus, int addr, int devad, int reg)
 {
 #ifdef CONFIG_DM_ETH
@@ -232,28 +234,52 @@ static int _dw_write_hwaddr(struct dw_eth_dev *priv, u8 *mac_id)
 	return 0;
 }
 
+__weak int dw_txclk_set_rate(unsigned long rate)
+{
+        return 0;
+}
+
 static int dw_adjust_link(struct dw_eth_dev *priv, struct eth_mac_regs *mac_p,
 			  struct phy_device *phydev)
 {
 	u32 conf = readl(&mac_p->conf) | FRAMEBURSTENABLE | DISABLERXOWN;
+	ulong rate;
+	int ret;
 
 	if (!phydev->link) {
 		printf("%s: No link.\n", phydev->dev->name);
 		return 0;
 	}
 
-	if (phydev->speed != 1000)
-		conf |= MII_PORTSELECT;
-	else
+        switch (phydev->speed) {
+        case SPEED_1000:
+                rate = 125 * 1000 * 1000;
 		conf &= ~MII_PORTSELECT;
-
-	if (phydev->speed == 100)
+                break;
+        case SPEED_100:
+                rate = 25 * 1000 * 1000;
+		conf |= MII_PORTSELECT;
 		conf |= FES_100;
+                break;
+        case SPEED_10:
+                rate = 2.5 * 1000 * 1000;
+		conf |= MII_PORTSELECT;
+                break;
+        default:
+                pr_err("invalid speed %d", phydev->speed);
+                return -EINVAL;
+        }
 
 	if (phydev->duplex)
 		conf |= FULLDPLXMODE;
 
 	writel(conf, &mac_p->conf);
+
+	ret = dw_txclk_set_rate(rate);
+        if (ret < 0) {
+                pr_err("dw (tx_clk, %lu) failed: %d", rate, ret);
+                return ret;
+        }
 
 	printf("Speed: %d, %s duplex%s\n", phydev->speed,
 	       (phydev->duplex) ? "full" : "half",
@@ -482,7 +508,7 @@ static int dw_phy_init(struct dw_eth_dev *priv, void *dev)
 {
 	struct phy_device *phydev;
 	int phy_addr = -1, ret;
-
+	
 #ifdef CONFIG_PHY_ADDR
 	phy_addr = CONFIG_PHY_ADDR;
 #endif
@@ -654,6 +680,24 @@ int designware_eth_write_hwaddr(struct udevice *dev)
 	return _dw_write_hwaddr(priv, pdata->enetaddr);
 }
 
+__weak void designware_get_mac_from_fuse(unsigned char *mac)
+{
+}
+
+static int designware_get_hwaddr(struct dw_eth_dev *priv, unsigned char *mac)
+{
+	designware_get_mac_from_fuse(mac);
+	return !is_valid_ethaddr(mac);
+}
+
+static int designware_eth_read_rom_hwaddr(struct udevice *dev)
+{
+	struct eth_pdata *pdata = dev_get_platdata(dev);
+	struct dw_eth_dev *priv = dev_get_priv(dev);
+
+	return designware_get_hwaddr(priv, pdata->enetaddr);
+}
+
 static int designware_eth_bind(struct udevice *dev)
 {
 #ifdef CONFIG_DM_PCI
@@ -674,8 +718,8 @@ int designware_eth_probe(struct udevice *dev)
 {
 	struct eth_pdata *pdata = dev_get_platdata(dev);
 	struct dw_eth_dev *priv = dev_get_priv(dev);
-	u32 iobase = pdata->iobase;
-	ulong ioaddr;
+	phys_addr_t iobase = pdata->iobase;
+	phys_addr_t ioaddr;
 	int ret, err;
 	struct reset_ctl_bulk reset_bulk;
 #ifdef CONFIG_CLK
@@ -745,7 +789,7 @@ int designware_eth_probe(struct udevice *dev)
 	}
 #endif
 
-	debug("%s, iobase=%x, priv=%p\n", __func__, iobase, priv);
+	debug("%s, iobase=%lx, priv=%p\n", __func__, iobase, priv);
 	ioaddr = iobase;
 	priv->mac_regs_p = (struct eth_mac_regs *)ioaddr;
 	priv->dma_regs_p = (struct eth_dma_regs *)(ioaddr + DW_DMA_BASE_OFFSET);
@@ -757,8 +801,16 @@ int designware_eth_probe(struct udevice *dev)
 		err = ret;
 		goto mdio_err;
 	}
+#ifdef GMAC_USE_FIRST_MII_BUS
+	if (!g_mii_bus) {
+		priv->bus = miiphy_get_dev_by_name(dev->name);
+		g_mii_bus = priv->bus;
+	} else {
+		priv->bus = g_mii_bus;
+	}
+#else
 	priv->bus = miiphy_get_dev_by_name(dev->name);
-
+#endif
 	ret = dw_phy_init(priv, dev);
 	debug("%s, ret=%d\n", __func__, ret);
 	if (!ret)
@@ -766,8 +818,18 @@ int designware_eth_probe(struct udevice *dev)
 
 	/* continue here for cleanup if no PHY found */
 	err = ret;
+#ifdef GMAC_USE_FIRST_MII_BUS
+	struct mii_dev *t_mii = NULL;
+	t_mii = miiphy_get_dev_by_name(dev->name);
+	if((g_mii_bus != t_mii) && (t_mii != NULL) ){
+		printf("free mdio bus %s\n",t_mii->name);
+		mdio_unregister(t_mii);
+		mdio_free(t_mii);
+	}
+#else
 	mdio_unregister(priv->bus);
 	mdio_free(priv->bus);
+#endif
 mdio_err:
 
 #ifdef CONFIG_CLK
@@ -802,6 +864,7 @@ const struct eth_ops designware_eth_ops = {
 	.free_pkt		= designware_eth_free_pkt,
 	.stop			= designware_eth_stop,
 	.write_hwaddr		= designware_eth_write_hwaddr,
+	.read_rom_hwaddr	= designware_eth_read_rom_hwaddr,
 };
 
 int designware_eth_ofdata_to_platdata(struct udevice *dev)
@@ -854,6 +917,7 @@ static const struct udevice_id designware_eth_ids[] = {
 	{ .compatible = "amlogic,meson-axg-dwmac" },
 	{ .compatible = "st,stm32-dwmac" },
 	{ .compatible = "snps,arc-dwmac-3.70a" },
+	{ .compatible = "snps,dwmac" },
 	{ }
 };
 

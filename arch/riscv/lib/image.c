@@ -48,7 +48,12 @@ int booti_setup(ulong image, ulong *relocated_addr, ulong *size,
 		return -EINVAL;
 	}
 	*size = lhdr->image_size;
+
+#ifdef CONFIG_TARGET_LIGHT_C910
+	*relocated_addr = (ulong)lhdr;
+#else
 	*relocated_addr = gd->ram_base + lhdr->text_offset;
+#endif
 
 	unmap_sysmem(lhdr);
 

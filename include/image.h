@@ -189,6 +189,7 @@ enum {
 	IH_ARCH_AVR32,			/* AVR32	*/
 	IH_ARCH_ST200,			/* STMicroelectronics ST200  */
 	IH_ARCH_SANDBOX,		/* Sandbox architecture (test only) */
+	IH_ARCH_CSKY = IH_ARCH_SANDBOX,	/* CSKY */
 	IH_ARCH_NDS32,			/* ANDES Technology - NDS32  */
 	IH_ARCH_OPENRISC,		/* OpenRISC 1000  */
 	IH_ARCH_ARM64,			/* ARM64	*/

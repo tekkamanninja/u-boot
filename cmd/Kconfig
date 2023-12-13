@@ -461,6 +461,12 @@ config CMD_ZBOOT
 	  booting both 32- and 64-bit kernels, as well as secure boot.
 	  Documentation is available in doc/uImage.FIT/x86-fit-boot.txt
 
+config CMD_BOOT_SLAVE
+	bool "boot the slave cpu"
+	default n
+	help
+	  Boot the slave cpu.
+
 endmenu
 
 menu "Environment commands"
@@ -688,6 +694,11 @@ config CMD_MEMTEST
 	help
 	  Simple RAM read/write test.
 
+config DDR_PRBS_TEST
+        bool "DDR PRBS test"
+        help
+          Enabling this will support ddr prbs test via UBOOT CMD.
+
 if CMD_MEMTEST
 
 config SYS_ALT_MEMTEST
@@ -696,6 +707,11 @@ config SYS_ALT_MEMTEST
 	  Use a more complete alternative memory test.
 
 endif
+
+config DDR_SCAN
+        bool "DDR Scan test"
+        help
+          Enabling this will support ddr scan test via UBOOT CMD.
 
 config CMD_MX_CYCLIC
 	bool "mdc, mwc"

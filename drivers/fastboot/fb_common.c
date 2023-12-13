@@ -115,6 +115,16 @@ void (*fastboot_get_progress_callback(void))(const char *)
  */
 void fastboot_boot(void)
 {
+#ifdef THEAD_LIGHT_FASTBOOT
+	char cmdbuf[32];
+
+	sprintf(cmdbuf, "bootslave; run set_bootargs; booti %s - %s", LIGHT_KERNEL_ADDR_CMD, LIGHT_DTB_ADDR_CMD);
+	printf("fastboot bootcmd %s\n", cmdbuf);
+	run_command(cmdbuf, 0);
+
+	return;
+#endif
+
 	char *s;
 
 	s = env_get("fastboot_bootcmd");

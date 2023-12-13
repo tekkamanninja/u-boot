@@ -712,6 +712,7 @@ void mmc_destroy(struct mmc *mmc);
 int mmc_unbind(struct udevice *dev);
 int mmc_initialize(bd_t *bis);
 int mmc_init_device(int num);
+int snps_mmc_init(struct mmc *mmc);
 int mmc_init(struct mmc *mmc);
 int mmc_send_tuning(struct mmc *mmc, u32 opcode, int *cmd_error);
 
@@ -862,6 +863,11 @@ int mmc_get_env_addr(struct mmc *mmc, int copy, u32 *env_addr);
 extern uint mmc_get_env_part(struct mmc *mmc);
 # endif
 int mmc_get_env_dev(void);
+
+int mmc_select_speed_mode(struct mmc *mmc, enum bus_mode mode);
+int sd_select_speed_mode(struct mmc *mmc, enum bus_mode mode);
+int mmc_resetore_mmc_modes_by_pref(void);
+int sd_resetore_sd_modes_by_pref(void);
 
 /* Minimum partition switch timeout in units of 10-milliseconds */
 #define MMC_MIN_PART_SWITCH_TIME	30 /* 300 ms */

@@ -13,6 +13,8 @@
 #include <part.h>
 #include <stdlib.h>
 
+#define BLOCK_SIZE 512
+
 /**
  * image_size - final fastboot image size
  */
@@ -39,6 +41,7 @@ static void reboot_bootloader(char *, char *);
 #if CONFIG_IS_ENABLED(FASTBOOT_CMD_OEM_FORMAT)
 static void oem_format(char *, char *);
 #endif
+static void oem_command(char *, char *);
 
 static const struct {
 	const char *command;
@@ -88,6 +91,10 @@ static const struct {
 		.dispatch = oem_format,
 	},
 #endif
+	[FASTBOOT_COMMAND_OEM_COMMAND] = {
+		.command = "oem command",
+		.dispatch = oem_command,
+	},
 };
 
 /**
@@ -268,7 +275,109 @@ void fastboot_data_complete(char *response)
  */
 static void flash(char *cmd_parameter, char *response)
 {
+#ifdef THEAD_LIGHT_FASTBOOT
+	char cmdbuf[32];
+	u32 block_cnt;
+	struct blk_desc *dev_desc;
+
+	if (strcmp(cmd_parameter, "uboot") == 0) {
+		dev_desc = blk_get_dev("mmc", CONFIG_FASTBOOT_FLASH_MMC_DEV);
+		if (!dev_desc || dev_desc->type == DEV_TYPE_UNKNOWN) {
+			fastboot_fail("invalid mmc device", response);
+			return;
+        }
+
+		run_command("mmc partconf 0 1 0 1", 0);
+
+		block_cnt = image_size / BLOCK_SIZE;
+		if (image_size % BLOCK_SIZE) {
+			block_cnt = block_cnt +1;
+		}
+
+		sprintf(cmdbuf, "mmc write 0x%p 0 %x", fastboot_buf_addr, block_cnt);
+
+		run_command(cmdbuf, 0);
+		run_command("mmc partconf 0 1 0 0", 0);
+
+	} else if ((strcmp(cmd_parameter, "fw") == 0)) {
+		memcpy((void *)LIGHT_FW_ADDR, fastboot_buf_addr, image_size);
+	} else if ((strcmp(cmd_parameter, "uImage") == 0)) {
+		memcpy((void *)LIGHT_KERNEL_ADDR, fastboot_buf_addr, image_size);
+	} else if ((strcmp(cmd_parameter, "dtb") == 0)) {
+		memcpy((void *)LIGHT_DTB_ADDR, fastboot_buf_addr, image_size);
+	} else if ((strcmp(cmd_parameter, "rootfs") == 0)) {
+		memcpy((void *)LIGHT_ROOTFS_ADDR, fastboot_buf_addr, image_size);
+	} else if ((strcmp(cmd_parameter, "aon") == 0)) {
+		memcpy((void *)LIGHT_AON_FW_ADDR, fastboot_buf_addr, image_size);
+	} else if ((strcmp(cmd_parameter, TF_PART_NAME) == 0)) {
+		memcpy((void *)LIGHT_TF_FW_ADDR, fastboot_buf_addr, image_size);
+	} else if ((strcmp(cmd_parameter, TEE_PART_NAME) == 0)) {
+		memcpy((void *)LIGHT_TEE_FW_ADDR, fastboot_buf_addr, image_size);
+	} 
+
+	if(strcmp(cmd_parameter, "uboot") == 0 || (strcmp(cmd_parameter, "fw") == 0) ||
+	   (strcmp(cmd_parameter, "uImage") == 0) || (strcmp(cmd_parameter, "dtb") == 0) ||
+	   (strcmp(cmd_parameter, "rootfs") == 0) || (strcmp(cmd_parameter, "aon") == 0)) {
+		fastboot_okay(NULL, response);
+		return;
+	}
+#endif
+
+#if CONFIG_IS_ENABLED(LIGHT_SEC_UPGRADE)
+	if(strcmp(cmd_parameter, TF_IMG_UPD_NAME) == 0) {
+		#if CONFIG_IS_ENABLED(FASTBOOT_FLASH_MMC)
+		/* tee/tf/uboot image must be written into stash partition */
+		sprintf(cmdbuf, "%s", STASH_PART_NAME);
+		fastboot_mmc_flash_write(cmdbuf, fastboot_buf_addr, image_size, response);
+		#endif
+		/* Send ACK to host */
+		fastboot_okay(NULL, response);
+		
+		/* set secure upgrade flag to indicate it is TF image upgrade*/
+		sprintf(cmdbuf,"env set sec_upgrade_mode 0x%x", TF_SEC_UPGRADE_FLAG);
+		run_command(cmdbuf, 0);
+		run_command("saveenv", 0);
+		run_command("reset", 0);
+		return;
+	} else if (strcmp(cmd_parameter, TEE_IMG_UPD_NAME) == 0) {
+		#if CONFIG_IS_ENABLED(FASTBOOT_FLASH_MMC)
+		/* tee/tf/uboot image must be written into stash partition */
+		sprintf(cmdbuf, "%s", STASH_PART_NAME);
+		fastboot_mmc_flash_write(cmdbuf, fastboot_buf_addr, image_size, response);
+		#endif
+
+		/* Send ACK to host */
+		fastboot_okay(NULL, response);
+		
+		/* set secure upgrade flag to indicate it is TEE image upgrade*/
+		sprintf(cmdbuf,"env set sec_upgrade_mode 0x%x", TEE_SEC_UPGRADE_FLAG);
+		run_command(cmdbuf, 0);
+		run_command("saveenv", 0);
+		run_command("reset", 0);
+		return;
+	} else if (strcmp(cmd_parameter, UBOOT_IMG_UPD_NAME) == 0) {
+		#if CONFIG_IS_ENABLED(FASTBOOT_FLASH_MMC)
+
+		env_set_hex("ubootupdsize", image_size);
+		/* tee/tf/uboot image must be written into stash partition */
+		sprintf(cmdbuf, "%s", STASH_PART_NAME);
+		fastboot_mmc_flash_write(cmdbuf, fastboot_buf_addr, image_size, response);
+		#endif
+
+		/* Send ACK to host */
+		fastboot_okay(NULL, response);
+		
+		/* set secure upgrade flag to indicate it is UBOOT image upgrade*/
+		sprintf(cmdbuf,"env set sec_upgrade_mode 0x%x", UBOOT_SEC_UPGRADE_FLAG);
+		run_command(cmdbuf, 0);
+		run_command("saveenv", 0);
+		run_command("reset", 0);
+		return;
+	} 
+#endif
+
 #if CONFIG_IS_ENABLED(FASTBOOT_FLASH_MMC)
+	printf("cmd_parameter: %s, imagesize: %d\n", cmd_parameter, image_size);
 	fastboot_mmc_flash_write(cmd_parameter, fastboot_buf_addr, image_size,
 				 response);
 #endif
@@ -335,3 +444,17 @@ static void oem_format(char *cmd_parameter, char *response)
 	}
 }
 #endif
+
+/**
+ * oem_command() - Execute the OEM command
+ *
+ * @cmd_parameter: Pointer to command parameter
+ * @response: Pointer to fastboot response buffer
+ */
+static void oem_command(char *cmd_parameter, char *response)
+{
+	if (run_command(cmd_parameter, 0))
+		fastboot_fail("", response);
+	else
+		fastboot_okay(NULL, response);
+}

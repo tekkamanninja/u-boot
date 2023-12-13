@@ -412,9 +412,29 @@ CHECKFLAGS     := -D__linux__ -Dlinux -D__STDC__ -Dunix -D__unix__ \
 
 KBUILD_CPPFLAGS := -D__KERNEL__ -D__UBOOT__
 
+
+COMPILE_TIME = $(shell date +%F-%T)
+GIT_REVISION = $(shell git rev-parse --verify --short HEAD 2>/dev/null)
+GIT_BRANCH = $(shell git symbolic-ref --short -q HEAD 2>/dev/null)
+GIT_DIRTY    = $(shell git diff . 2>/dev/null)
+
+ifneq "$(GIT_DIRTY)" ""
+GIT_DIRTY_FLAG = "$(GIT_REVISION)-very-very-dirty!!!"
+else
+GIT_DIRTY_FLAG = "$(GIT_REVISION)"
+endif
+
+LYB_CFLAGS  := $(addprefix -I, $(IDIR))
+LYB_CFLAGS  += -Wall
+LYB_CFLAGS  += -DCOMPILE_TIME="\"$(COMPILE_TIME)\""
+LYB_CFLAGS  += -DGIT_REVISION="\"$(GIT_DIRTY_FLAG)\""
+LYB_CFLAGS  += -DGIT_BRANCH="\"$(GIT_BRANCH)\""
+
+
 KBUILD_CFLAGS   := -Wall -Wstrict-prototypes \
 		   -Wno-format-security \
-		   -fno-builtin -ffreestanding $(CSTD_FLAG)
+		   -fno-builtin -ffreestanding $(CSTD_FLAG) \
+		   $(LYB_CFLAGS)
 KBUILD_CFLAGS	+= -fshort-wchar -fno-strict-aliasing
 KBUILD_AFLAGS   := -D__ASSEMBLY__
 
@@ -758,6 +778,7 @@ libs-y += drivers/usb/musb/
 libs-y += drivers/usb/musb-new/
 libs-y += drivers/usb/phy/
 libs-y += drivers/usb/ulpi/
+libs-$(CONFIG_TARGET_LIGHT_FM_C910_VAL_SV) += drivers/trng/
 libs-y += cmd/
 libs-y += common/
 libs-y += env/
@@ -789,6 +810,9 @@ else
 PLATFORM_LIBGCC := -L $(shell dirname `$(CC) $(c_flags) -print-libgcc-file-name`) -lgcc
 endif
 PLATFORM_LIBS += $(PLATFORM_LIBGCC)
+ifeq ($(CONFIG_TARGET_LIGHT_C910),y)
+PLATFORM_LIBS += -L $(shell pwd)/lib/sec_library -lsec_library
+endif
 
 ifdef CONFIG_CC_COVERAGE
 KBUILD_CFLAGS += --coverage
@@ -843,7 +867,7 @@ DO_STATIC_RELA =
 endif
 
 # Always append ALL so that arch config.mk's can add custom ones
-ALL-y += u-boot.srec u-boot.bin u-boot.sym System.map binary_size_check
+ALL-y += u-boot.srec u-boot.bin u-boot.sym System.map binary_size_check dtbs
 
 ALL-$(CONFIG_ONENAND_U_BOOT) += u-boot-onenand.bin
 ifeq ($(CONFIG_SPL_FSL_PBL),y)
@@ -866,6 +890,7 @@ ALL-$(CONFIG_SPL_FRAMEWORK) += u-boot.img
 endif
 endif
 ALL-$(CONFIG_TPL) += tpl/u-boot-tpl.bin
+ALL-$(CONFIG_PPL) += ppl/u-boot-ppl.bin
 ALL-$(CONFIG_OF_SEPARATE) += u-boot.dtb
 ifeq ($(CONFIG_SPL_FRAMEWORK),y)
 ALL-$(CONFIG_OF_SEPARATE) += u-boot-dtb.img
@@ -1281,7 +1306,7 @@ endif
 ifeq ($(CONFIG_SPL_FIT_GENERATOR),"arch/arm/mach-rockchip/make_fit_atf.py")
 U_BOOT_ITS_DEPS += u-boot
 endif
-$(U_BOOT_ITS): $(U_BOOT_ITS_DEPS) FORCE
+$(U_BOOT_ITS): $(U_BOOT_ITS_DEPS) dtbs FORCE
 	$(srctree)/$(CONFIG_SPL_FIT_GENERATOR) \
 	$(patsubst %,arch/$(ARCH)/dts/%.dtb,$(subst ",,$(CONFIG_OF_LIST))) > $@
 endif
@@ -1847,6 +1872,12 @@ tpl/u-boot-tpl.bin: tools prepare \
 	$(Q)$(MAKE) obj=tpl -f $(srctree)/scripts/Makefile.spl all
 	$(TPL_SIZE_CHECK)
 
+ppl/u-boot-ppl: tools prepare
+	$(Q)$(MAKE) obj=ppl -f $(srctree)/scripts/Makefile.ppl all
+
+ppl/u-boot-ppl.bin: ppl/u-boot-ppl
+	@:
+
 TAG_SUBDIRS := $(patsubst %,$(srctree)/%,$(u-boot-dirs) include)
 
 FIND := find
@@ -1921,7 +1952,7 @@ CHANGELOG:
 
 # Directories & files removed with 'make clean'
 CLEAN_DIRS  += $(MODVERDIR) \
-	       $(foreach d, spl tpl, $(patsubst %,$d/%, \
+	       $(foreach d, spl tpl ppl, $(patsubst %,$d/%, \
 			$(filter-out include, $(shell ls -1 $d 2>/dev/null))))
 
 CLEAN_FILES += include/bmp_logo.h include/bmp_logo_data.h tools/version.h \
@@ -1954,7 +1985,7 @@ clean: $(clean-dirs)
 	$(call cmd,rmdirs)
 	$(call cmd,rmfiles)
 	@find $(if $(KBUILD_EXTMOD), $(KBUILD_EXTMOD), .) $(RCS_FIND_IGNORE) \
-		\( -name '*.[oas]' -o -name '*.ko' -o -name '.*.cmd' \
+		\( -name '*.[os]' -o -name '*.ko' -o -name '.*.cmd' \
 		-o -name '*.ko.*' -o -name '*.su' -o -name '*.pyc' \
 		-o -name '.*.d' -o -name '.*.tmp' -o -name '*.mod.c' \
 		-o -name '*.lex.c' -o -name '*.tab.[ch]' \

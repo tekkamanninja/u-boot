@@ -297,6 +297,10 @@ int dwc3_send_gadget_ep_cmd(struct dwc3 *dwc, unsigned ep,
 	u32			timeout = 500;
 	u32			reg;
 
+	reg = dwc3_readl(dwc->regs, DWC3_GUSB2PHYCFG(ep));
+	reg &= ~(1 << 6);
+	dwc3_writel(dwc->regs, DWC3_GUSB2PHYCFG(ep), reg);
+
 	dwc3_writel(dwc->regs, DWC3_DEPCMDPAR0(ep), params->param0);
 	dwc3_writel(dwc->regs, DWC3_DEPCMDPAR1(ep), params->param1);
 	dwc3_writel(dwc->regs, DWC3_DEPCMDPAR2(ep), params->param2);
@@ -307,6 +311,11 @@ int dwc3_send_gadget_ep_cmd(struct dwc3 *dwc, unsigned ep,
 		if (!(reg & DWC3_DEPCMD_CMDACT)) {
 			dev_vdbg(dwc->dev, "Command Complete --> %d\n",
 					DWC3_DEPCMD_STATUS(reg));
+
+			reg = dwc3_readl(dwc->regs, DWC3_GUSB2PHYCFG(ep));
+			reg |= (1 << 6);
+			dwc3_writel(dwc->regs, DWC3_GUSB2PHYCFG(ep), reg);
+
 			return 0;
 		}
 
@@ -318,7 +327,7 @@ int dwc3_send_gadget_ep_cmd(struct dwc3 *dwc, unsigned ep,
 		if (!timeout)
 			return -ETIMEDOUT;
 
-		udelay(1);
+		mdelay(1);
 	} while (1);
 }
 
@@ -1478,6 +1487,8 @@ static int dwc3_gadget_start(struct usb_gadget *g,
 	 * STAR#9000525659: Clock Domain Crossing on DCTL in
 	 * USB 2.0 Mode
 	 */
+	dev_info(dwc->dev, "%s maximum_speed:%d revision:0x%x\n", __func__,
+			dwc->maximum_speed, dwc->revision);
 	if (dwc->revision < DWC3_REVISION_220A) {
 		reg |= DWC3_DCFG_SUPERSPEED;
 	} else {
@@ -1498,6 +1509,8 @@ static int dwc3_gadget_start(struct usb_gadget *g,
 		}
 	}
 	dwc3_writel(dwc->regs, DWC3_DCFG, reg);
+	dev_info(dwc->dev, "%s DWC3_DCFG:0x%x\n", __func__,
+			dwc3_readl(dwc->regs, DWC3_DCFG));
 
 	dwc->start_config_issued = false;
 
@@ -2144,6 +2157,8 @@ static void dwc3_gadget_conndone_interrupt(struct dwc3 *dwc)
 	dwc->speed = speed;
 
 	dwc3_update_ram_clk_sel(dwc, speed);
+	dev_info(dwc->dev, "%s speed:%d dwc3_dsts:0x%x\n",
+			__func__, speed, reg);
 
 	switch (speed) {
 	case DWC3_DCFG_SUPERSPEED:

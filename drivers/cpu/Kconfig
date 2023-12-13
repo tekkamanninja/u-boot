@@ -19,3 +19,9 @@ config CPU_RISCV
 	depends on CPU && RISCV
 	help
 	  Support CPU cores for RISC-V architecture.
+
+config CPU_CSKY
+	bool "Enable CSKY CPU driver"
+	depends on CPU && CSKY
+	help
+	  Support CPU cores for CSKY architecture.

@@ -431,6 +431,13 @@ config MMC_SDHCI_ASPEED
 	  specifications. On the AST2600, the device is also compatible with
 	  MMC 5.1 and eMMC 3.0.
 
+config MMC_SDHCI_SNPS
+	bool "SNPS SDHCI controller"
+	depends on DM_MMC
+	depends on MMC_SDHCI
+	help
+		Snps sdhci.
+
 config MMC_SDHCI_ATMEL
 	bool "Atmel SDHCI controller support"
 	depends on ARCH_AT91

@@ -16,8 +16,12 @@
 struct dw_scl_sda_cfg {
 	u32 ss_hcnt;
 	u32 fs_hcnt;
+	u32 fsp_hcnt;
 	u32 ss_lcnt;
 	u32 fs_lcnt;
+	u32 fsp_lcnt;
+	u32 hs_hcnt;
+	u32 hs_lcnt;
 	u32 sda_hold;
 };
 
@@ -26,9 +30,25 @@ struct dw_scl_sda_cfg {
 static struct dw_scl_sda_cfg byt_config = {
 	.ss_hcnt = 0x200,
 	.fs_hcnt = 0x55,
+	.fs_phcnt = 0x55,
 	.ss_lcnt = 0x200,
 	.fs_lcnt = 0x99,
+	.fsp_lcnt = 0x99,
 	.sda_hold = 0x6,
+};
+#endif
+
+#ifdef CONFIG_RISCV_THEAD
+static struct dw_scl_sda_cfg light_config = {
+	.ss_hcnt = 0x104,
+	.ss_lcnt = 0xec,
+	.fs_hcnt = 0x37,
+	.fs_lcnt = 0x42,
+	.fsp_hcnt = 0x14,
+	.fsp_lcnt = 0x1a,
+	.hs_hcnt = 0x2,
+	.hs_lcnt = 0x7,
+	.sda_hold = 0x3,
 };
 #endif
 
@@ -90,9 +110,11 @@ static unsigned int __dw_i2c_set_bus_speed(struct i2c_regs *i2c_base,
 	unsigned int ena;
 	int i2c_spd;
 
-	if (speed >= I2C_MAX_SPEED)
+	if (speed > I2C_FASTPLUS_SPEED)
 		i2c_spd = IC_SPEED_MODE_MAX;
-	else if (speed >= I2C_FAST_SPEED)
+	else if (speed > I2C_FAST_SPEED)
+		i2c_spd = IC_SPEED_MODE_FASTPLUS;
+	else if (speed > I2C_STANDARD_SPEED)
 		i2c_spd = IC_SPEED_MODE_FAST;
 	else
 		i2c_spd = IC_SPEED_MODE_STANDARD;
@@ -108,10 +130,15 @@ static unsigned int __dw_i2c_set_bus_speed(struct i2c_regs *i2c_base,
 	switch (i2c_spd) {
 #ifndef CONFIG_X86 /* No High-speed for BayTrail yet */
 	case IC_SPEED_MODE_MAX:
-		cntl |= IC_CON_SPD_SS;
+		cntl |= IC_CON_SPD_HS;
 		if (scl_sda_cfg) {
+#ifdef	CONFIG_RISCV_THEAD
+			hcnt = scl_sda_cfg->hs_hcnt;
+			lcnt = scl_sda_cfg->hs_lcnt;
+#else
 			hcnt = scl_sda_cfg->fs_hcnt;
 			lcnt = scl_sda_cfg->fs_lcnt;
+#endif
 		} else {
 			hcnt = (bus_mhz * MIN_HS_SCL_HIGHTIME) / NANO_TO_MICRO;
 			lcnt = (bus_mhz * MIN_HS_SCL_LOWTIME) / NANO_TO_MICRO;
@@ -132,6 +159,19 @@ static unsigned int __dw_i2c_set_bus_speed(struct i2c_regs *i2c_base,
 		}
 		writel(hcnt, &i2c_base->ic_ss_scl_hcnt);
 		writel(lcnt, &i2c_base->ic_ss_scl_lcnt);
+		break;
+
+	case IC_SPEED_MODE_FASTPLUS:
+		cntl |= IC_CON_SPD_FS;
+		if (scl_sda_cfg) {
+			hcnt = scl_sda_cfg->fsp_hcnt;
+			lcnt = scl_sda_cfg->fsp_lcnt;
+		} else {
+			hcnt = (bus_mhz * MIN_FS_SCL_HIGHTIME) / NANO_TO_MICRO;
+			lcnt = (bus_mhz * MIN_FS_SCL_LOWTIME) / NANO_TO_MICRO;
+		}
+		writel(hcnt, &i2c_base->ic_fs_scl_hcnt);
+		writel(lcnt, &i2c_base->ic_fs_scl_lcnt);
 		break;
 
 	case IC_SPEED_MODE_FAST:
@@ -582,6 +622,9 @@ static int designware_i2c_probe(struct udevice *bus)
 #endif
 	} else {
 		priv->regs = (struct i2c_regs *)devfdt_get_addr_ptr(bus);
+#ifdef CONFIG_RISCV_THEAD
+		priv->scl_sda_cfg = &light_config;
+#endif
 	}
 
 	ret = reset_get_bulk(bus, &priv->resets);

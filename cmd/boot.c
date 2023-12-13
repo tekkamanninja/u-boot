@@ -68,3 +68,11 @@ U_BOOT_CMD(
 	""
 );
 #endif
+
+#ifdef CONFIG_CMD_BOOT_SLAVE
+U_BOOT_CMD(
+	bootslave, CONFIG_SYS_MAXARGS, 0, do_bootslave,
+	"Boot application from memory on the SLAVE CPU",
+	"addr    - address of the application"
+);
+#endif

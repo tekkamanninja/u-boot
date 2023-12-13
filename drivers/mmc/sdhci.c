@@ -38,6 +38,9 @@ static void sdhci_reset(struct sdhci_host *host, u8 mask)
 		timeout--;
 		udelay(1000);
 	}
+#ifdef CONFIG_TARGET_LIGHT_C910
+	mdelay(50);
+#endif
 }
 
 static void sdhci_cmd_done(struct sdhci_host *host, struct mmc_cmd *cmd)
@@ -174,8 +177,19 @@ static void sdhci_prepare_dma(struct sdhci_host *host, struct mmc_data *data,
 			sdhci_writel(host, (u64)host->adma_addr >> 32,
 				     SDHCI_ADMA_ADDRESS_HI);
 	}
+	if(data->flags == MMC_DATA_READ){
+		/*invalidate cache before start dma read. 
+		 invalidate_dcache_range () for different arch/cpu may implemented in 2 ways: 
+		 1) only invalidate range cover addr to end cache lines,
+		   this way may add flush_cache before invalid better when start addr not align to cache line
+		 2) clean & invalidate range cover addr to end cache lines
+		    this way is ok handled with not aligned addr
+		 */
+		invalidate_dcache_range(host->start_addr,host->start_addr+ROUND(trans_bytes, ARCH_DMA_MINALIGN));
+	}else{
+		flush_cache(host->start_addr, ROUND(trans_bytes, ARCH_DMA_MINALIGN));
+	}
 
-	flush_cache(host->start_addr, ROUND(trans_bytes, ARCH_DMA_MINALIGN));
 }
 #else
 static void sdhci_prepare_dma(struct sdhci_host *host, struct mmc_data *data,
@@ -194,8 +208,9 @@ static int sdhci_transfer_data(struct sdhci_host *host, struct mmc_data *data)
 	do {
 		stat = sdhci_readl(host, SDHCI_INT_STATUS);
 		if (stat & SDHCI_INT_ERROR) {
-			pr_debug("%s: Error detected in status(0x%X)!\n",
+			pr_err("%s: Error detected in status(0x%X)!\n",
 				 __func__, stat);
+
 			return -EIO;
 		}
 		if (!transfer_done && (stat & rdy)) {
@@ -231,6 +246,13 @@ static int sdhci_transfer_data(struct sdhci_host *host, struct mmc_data *data)
 			return -ETIMEDOUT;
 		}
 	} while (!(stat & SDHCI_INT_DATA_END));
+#ifdef CONFIG_TARGET_LIGHT_C910	
+	extern void invalid_dcache_range(unsigned long start, unsigned long end);
+	/*After read ,invalid dcache range again to avoid cache filled during read tranfer*/
+	if(data->flags == MMC_DATA_READ){
+		invalid_dcache_range(host->start_addr,host->start_addr+ROUND(data->blocks*data->blocksize, ARCH_DMA_MINALIGN));
+	}
+#endif
 	return 0;
 }
 
@@ -555,6 +577,37 @@ void sdhci_set_uhs_timing(struct sdhci_host *host)
 	case UHS_SDR104:
 	case MMC_HS_200:
 		reg |= SDHCI_CTRL_UHS_SDR104;
+		break;
+	default:
+		reg |= SDHCI_CTRL_UHS_SDR12;
+	}
+
+	sdhci_writew(host, reg, SDHCI_HOST_CONTROL2);
+}
+
+void sdhci_set_timing(struct mmc *mmc)
+{
+	u32 reg;
+	struct sdhci_host *host = mmc->priv;
+
+	reg = sdhci_readw(host, SDHCI_HOST_CONTROL2);
+	reg &= ~SDHCI_CTRL_UHS_MASK;
+
+	switch (mmc->selected_mode) {
+	case UHS_SDR50:
+	case MMC_HS_52:
+		reg |= SDHCI_CTRL_UHS_SDR50;
+		break;
+	case UHS_DDR50:
+	case MMC_DDR_52:
+		reg |= SDHCI_CTRL_UHS_DDR50;
+		break;
+	case UHS_SDR104:
+	case MMC_HS_200:
+		reg |= SDHCI_CTRL_UHS_SDR104;
+		break;
+	case MMC_HS:
+		reg |= SDHCI_CTRL_UHS_SDR25;
 		break;
 	default:
 		reg |= SDHCI_CTRL_UHS_SDR12;

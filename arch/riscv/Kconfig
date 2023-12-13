@@ -20,6 +20,18 @@ config TARGET_QEMU_VIRT
 config TARGET_SIFIVE_FU540
 	bool "Support SiFive FU540 Board"
 
+config TARGET_ICE_C910
+	bool "Support T-HEAD ICE C910 Board"
+	select SUPPORT_SPL
+
+config TARGET_LIGHT_EVB_MPW_C910
+	bool "Support T-HEAD LIGHT EVB MPW C910 Board"
+	select SUPPORT_SPL
+
+config TARGET_LIGHT_C910
+	bool "Support T-HEAD LIGHT C910 Boards"
+	select SUPPORT_SPL
+
 endchoice
 
 config SYS_ICACHE_OFF
@@ -53,9 +65,13 @@ source "board/AndesTech/ax25-ae350/Kconfig"
 source "board/emulation/qemu-riscv/Kconfig"
 source "board/microchip/mpfs_icicle/Kconfig"
 source "board/sifive/fu540/Kconfig"
+source "board/thead/ice-c910/Kconfig"
+source "board/thead/light-evb-mpw-c910/Kconfig"
+source "board/thead/light-c910/Kconfig"
 
 # platform-specific options below
 source "arch/riscv/cpu/ax25/Kconfig"
+source "arch/riscv/cpu/c9xx/Kconfig"
 source "arch/riscv/cpu/generic/Kconfig"
 
 # architecture-specific options below
@@ -180,9 +196,15 @@ config ANDES_PLMT
 	  The Andes PLMT block holds memory-mapped mtime register
 	  associated with timer tick.
 
+config THEAD_IPI
+	bool
+	depends on RISCV_MMODE || SPL_RISCV_MMODE
+	help
+	  Just helps compiling
+
 config RISCV_RDTIME
 	bool
-	default y if RISCV_SMODE || SPL_RISCV_SMODE
+	default y if RISCV_MMODE || RISCV_SMODE || SPL_RISCV_SMODE
 	help
 	  The provides the riscv_get_time() API that is implemented using the
 	  standard rdtime instruction. This is the case for S-mode U-Boot, and

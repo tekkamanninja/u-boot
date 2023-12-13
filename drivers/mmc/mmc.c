@@ -13,6 +13,7 @@
 #include <dm/device-internal.h>
 #include <errno.h>
 #include <mmc.h>
+#include <sdhci.h>
 #include <part.h>
 #include <power/regulator.h>
 #include <malloc.h>
@@ -1650,7 +1651,14 @@ static inline int mmc_set_signal_voltage(struct mmc *mmc, uint signal_voltage)
 #endif
 
 #if !CONFIG_IS_ENABLED(MMC_TINY)
-static const struct mode_width_tuning sd_modes_by_pref[] = {
+struct mode_width_tuning sd_modes_by_pref_temp[] = {
+	{
+		.mode = UHS_SDR50,
+		.widths = MMC_MODE_4BIT | MMC_MODE_1BIT,
+	}
+};
+
+static struct mode_width_tuning sd_modes_by_pref_master[] = {
 #if CONFIG_IS_ENABLED(MMC_UHS_SUPPORT)
 #ifdef MMC_SUPPORTS_TUNING
 	{
@@ -1688,9 +1696,12 @@ static const struct mode_width_tuning sd_modes_by_pref[] = {
 	}
 };
 
+static struct mode_width_tuning *sd_modes_by_pref = sd_modes_by_pref_master;
+static uint32_t sd_modes_by_pref_length = ARRAY_SIZE(sd_modes_by_pref_master);
+
 #define for_each_sd_mode_by_pref(caps, mwt) \
 	for (mwt = sd_modes_by_pref;\
-	     mwt < sd_modes_by_pref + ARRAY_SIZE(sd_modes_by_pref);\
+	     mwt < sd_modes_by_pref + sd_modes_by_pref_length;\
 	     mwt++) \
 		if (caps & MMC_CAP(mwt->mode))
 
@@ -1729,7 +1740,7 @@ static int sd_select_mode_and_width(struct mmc *mmc, uint card_caps)
 
 		for (w = widths; w < widths + ARRAY_SIZE(widths); w++) {
 			if (*w & caps & mwt->widths) {
-				pr_debug("trying mode %s width %d (at %d MHz)\n",
+				pr_info("trying mode %s width %d (at %d MHz)\n",
 					 mmc_mode_name(mwt->mode),
 					 bus_width(*w),
 					 mmc_mode2freq(mmc, mwt->mode) / 1000000);
@@ -1865,8 +1876,14 @@ static inline int mmc_set_lowest_voltage(struct mmc *mmc, enum bus_mode mode,
 	return 0;
 }
 #endif
+struct mode_width_tuning mmc_modes_by_pref_temp[] = {
+	{
+		.mode = MMC_DDR_52,
+		.widths = MMC_MODE_8BIT | MMC_MODE_4BIT,
+	}
+};
 
-static const struct mode_width_tuning mmc_modes_by_pref[] = {
+static struct mode_width_tuning mmc_modes_by_pref_master[] = {
 #if CONFIG_IS_ENABLED(MMC_HS400_ES_SUPPORT)
 	{
 		.mode = MMC_HS_400_ES,
@@ -1905,9 +1922,12 @@ static const struct mode_width_tuning mmc_modes_by_pref[] = {
 	}
 };
 
+static struct mode_width_tuning *mmc_modes_by_pref = &mmc_modes_by_pref_master[0];
+static int mmc_modes_by_pref_length = ARRAY_SIZE(mmc_modes_by_pref_master);
+
 #define for_each_mmc_mode_by_pref(caps, mwt) \
 	for (mwt = mmc_modes_by_pref;\
-	    mwt < mmc_modes_by_pref + ARRAY_SIZE(mmc_modes_by_pref);\
+	    mwt < mmc_modes_by_pref + mmc_modes_by_pref_length;\
 	    mwt++) \
 		if (caps & MMC_CAP(mwt->mode))
 
@@ -1928,6 +1948,7 @@ static int mmc_select_hs400(struct mmc *mmc)
 {
 	int err;
 
+#ifndef CONFIG_TARGET_LIGHT_C910
 	/* Set timing to HS200 for tuning */
 	err = mmc_set_card_speed(mmc, MMC_HS_200, false);
 	if (err)
@@ -1943,6 +1964,7 @@ static int mmc_select_hs400(struct mmc *mmc)
 		debug("tuning failed\n");
 		return err;
 	}
+#endif
 
 	/* Set back to HS */
 	mmc_set_card_speed(mmc, MMC_HS, true);
@@ -1963,10 +1985,99 @@ static int mmc_select_hs400(struct mmc *mmc)
 
 	return 0;
 }
+
+int mmc_select_speed_mode(struct mmc *mmc, enum bus_mode mode)
+{
+	mmc_modes_by_pref_temp[0].mode = mode;
+	switch(mmc->bus_width) {
+        case 1:
+            mmc_modes_by_pref_temp[0].widths = MMC_MODE_1BIT;
+            break;
+        case 4:
+            mmc_modes_by_pref_temp[0].widths = MMC_MODE_4BIT;
+            break;
+        case 8:
+            mmc_modes_by_pref_temp[0].widths = MMC_MODE_8BIT;
+            break;
+        default:
+            return -1;
+    }
+
+    if(mode == MMC_HS_200 || mode == MMC_HS_400) {
+        mmc_modes_by_pref_temp[0].tuning = MMC_CMD_SEND_TUNING_BLOCK_HS200;
+    } else {
+        mmc_modes_by_pref_temp[0].tuning = 0;
+    }
+
+    mmc_modes_by_pref = &mmc_modes_by_pref_temp[0];
+    mmc_modes_by_pref_length = 1;
+
+    return 0;
+}
+
+int sd_select_speed_mode(struct mmc *mmc, enum bus_mode mode)
+{
+	sd_modes_by_pref_temp[0].mode = mode;
+	switch(mmc->bus_width) {
+        case 1:
+            sd_modes_by_pref_temp[0].widths = MMC_MODE_1BIT;
+            break;
+        case 4:
+            sd_modes_by_pref_temp[0].widths = MMC_MODE_4BIT;
+            break;
+        case 8:
+            sd_modes_by_pref_temp[0].widths = MMC_MODE_8BIT;
+            break;
+        default:
+            return -1;
+    }
+
+    if(mode == UHS_SDR104) {
+        sd_modes_by_pref_temp[0].tuning = MMC_CMD_SEND_TUNING_BLOCK;
+    } else {
+        sd_modes_by_pref_temp[0].tuning = 0;
+    }
+
+    sd_modes_by_pref = &sd_modes_by_pref_temp[0];
+    sd_modes_by_pref_length = 1;
+
+    return 0;
+}
+
+int mmc_resetore_mmc_modes_by_pref(void)
+{
+    mmc_modes_by_pref = &mmc_modes_by_pref_master[0];
+    mmc_modes_by_pref_length = ARRAY_SIZE(mmc_modes_by_pref_master);
+    return 0;
+}
+
+int sd_resetore_sd_modes_by_pref(void)
+{
+    sd_modes_by_pref = &sd_modes_by_pref_master[0];
+    sd_modes_by_pref_length = ARRAY_SIZE(sd_modes_by_pref_master);
+    return 0;
+}
+
 #else
 static int mmc_select_hs400(struct mmc *mmc)
 {
 	return -ENOTSUPP;
+}
+int mmc_select_speed_mode(struct mmc *mmc, enum bus_mode mode)
+{
+	return 0;
+}
+int sd_select_speed_mode(struct mmc *mmc, enum bus_mode mode)
+{
+	return 0;
+}
+int mmc_resetore_mmc_modes_by_pref(void)
+{
+	return 0;
+}
+int sd_resetore_sd_modes_by_pref(void)
+{
+	return 0;
 }
 #endif
 
@@ -2065,10 +2176,11 @@ static int mmc_select_mode_and_width(struct mmc *mmc, uint card_caps)
 		for_each_supported_width(card_caps & mwt->widths,
 					 mmc_is_mode_ddr(mwt->mode), ecbw) {
 			enum mmc_voltage old_voltage;
-			pr_debug("trying mode %s width %d (at %d MHz)\n",
+			pr_info("trying mode %s width %d (at %d MHz)\n",
 				 mmc_mode_name(mwt->mode),
 				 bus_width(ecbw->cap),
 				 mmc_mode2freq(mmc, mwt->mode) / 1000000);
+
 			old_voltage = mmc->signal_voltage;
 			err = mmc_set_lowest_voltage(mmc, mwt->mode,
 						     MMC_ALL_SIGNAL_VOLTAGE);
@@ -2127,7 +2239,7 @@ static int mmc_select_mode_and_width(struct mmc *mmc, uint card_caps)
 					err = mmc_execute_tuning(mmc,
 								 mwt->tuning);
 					if (err) {
-						pr_debug("tuning failed\n");
+						pr_err("tuning failed\n");
 						goto error;
 					}
 				}
@@ -2820,6 +2932,14 @@ retry:
 
 	return err;
 }
+
+#ifdef CONFIG_TARGET_LIGHT_C910
+extern int snps_sdhci_init(struct mmc *mmc);
+int snps_mmc_init(struct mmc *mmc)
+{
+    return snps_sdhci_init(mmc);
+}
+#endif
 
 int mmc_start_init(struct mmc *mmc)
 {

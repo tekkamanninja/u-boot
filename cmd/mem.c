@@ -28,6 +28,7 @@ DECLARE_GLOBAL_DATA_PTR;
 #define CONFIG_SYS_MEMTEST_SCRATCH 0
 #endif
 
+extern unsigned long get_ddr_density(void);
 static int mod_mem(cmd_tbl_t *, int, int, int, char * const []);
 
 /* Display values from last command.
@@ -38,6 +39,11 @@ static ulong	dp_last_length = 0x40;
 static ulong	mm_last_addr, mm_last_size;
 
 static	ulong	base_address = 0;
+
+static inline void _l2cache_ciall(void)
+{
+    asm volatile (".long 0x0170000b");
+}
 
 /* Memory Display
  *
@@ -576,13 +582,31 @@ static int do_mem_loopw(cmd_tbl_t *cmdtp, int flag, int argc,
 #endif /* CONFIG_LOOPW */
 
 #ifdef CONFIG_CMD_MEMTEST
-static ulong mem_test_alt(vu_long *buf, ulong start_addr, ulong end_addr,
+
+#define FAILURE_DOUBLE_CHECK
+#define DISPLAY_COUNT 1000000
+
+static int print_heartbeat(ulong cnt)
+{
+    if(cnt % DISPLAY_COUNT == 0)
+    {
+        printf("\r> \r");
+    }
+    else if(cnt % DISPLAY_COUNT == DISPLAY_COUNT/2)
+    {
+        printf("\r>>\r");
+    }
+    return 0;
+}
+
+ulong mem_test_alt(vu_long *buf, ulong start_addr, ulong end_addr,
 			  vu_long *dummy)
 {
 	vu_long *addr;
 	ulong errs = 0;
 	ulong val, readback;
-	int j;
+	int i,j;
+	unsigned long cnt;
 	vu_long offset;
 	vu_long test_offset;
 	vu_long pattern;
@@ -622,6 +646,7 @@ static ulong mem_test_alt(vu_long *buf, ulong start_addr, ulong end_addr,
 	addr = buf;
 	for (j = 0; j < sizeof(bitpattern) / sizeof(bitpattern[0]); j++) {
 		val = bitpattern[j];
+		cnt = 0;
 		for (; val != 0; val <<= 1) {
 			*addr = val;
 			*dummy  = ~val; /* clear the test data off the bus */
@@ -645,6 +670,7 @@ static ulong mem_test_alt(vu_long *buf, ulong start_addr, ulong end_addr,
 				if (ctrlc())
 					return -1;
 			}
+			print_heartbeat(cnt++);
 		}
 	}
 
@@ -699,6 +725,7 @@ static ulong mem_test_alt(vu_long *buf, ulong start_addr, ulong end_addr,
 	test_offset = 0;
 	addr[test_offset] = anti_pattern;
 
+	cnt++;
 	for (offset = 1; offset < num_words; offset <<= 1) {
 		temp = addr[offset];
 		if (temp != pattern) {
@@ -710,6 +737,7 @@ static ulong mem_test_alt(vu_long *buf, ulong start_addr, ulong end_addr,
 			if (ctrlc())
 				return -1;
 		}
+		print_heartbeat(cnt++);
 	}
 	addr[test_offset] = pattern;
 	WATCHDOG_RESET();
@@ -719,7 +747,7 @@ static ulong mem_test_alt(vu_long *buf, ulong start_addr, ulong end_addr,
 	 */
 	for (test_offset = 1; test_offset < num_words; test_offset <<= 1) {
 		addr[test_offset] = anti_pattern;
-
+		cnt = 0;
 		for (offset = 1; offset < num_words; offset <<= 1) {
 			temp = addr[offset];
 			if ((temp != pattern) && (offset != test_offset)) {
@@ -732,6 +760,7 @@ static ulong mem_test_alt(vu_long *buf, ulong start_addr, ulong end_addr,
 				if (ctrlc())
 					return -1;
 			}
+			print_heartbeat(cnt++);
 		}
 		addr[test_offset] = pattern;
 	}
@@ -753,14 +782,17 @@ static ulong mem_test_alt(vu_long *buf, ulong start_addr, ulong end_addr,
 	/*
 	 * Fill memory with a known pattern.
 	 */
+	cnt = 0;
 	for (pattern = 1, offset = 0; offset < num_words; pattern++, offset++) {
 		WATCHDOG_RESET();
 		addr[offset] = pattern;
+		print_heartbeat(cnt++);
 	}
 
 	/*
 	 * Check each location and invert it for the second pass.
 	 */
+	cnt = 0;
 	for (pattern = 1, offset = 0; offset < num_words; pattern++, offset++) {
 		WATCHDOG_RESET();
 		temp = addr[offset];
@@ -770,17 +802,35 @@ static ulong mem_test_alt(vu_long *buf, ulong start_addr, ulong end_addr,
 				start_addr + offset*sizeof(vu_long),
 				pattern, temp);
 			errs++;
+#ifdef FAILURE_DOUBLE_CHECK
+			for(i=0; i<10; i++)
+			{
+			    temp = *(volatile vu_long *)(start_addr + offset*sizeof(vu_long));
+			    if(temp != pattern)
+			    {
+                                printf("[first pass]: double check at cnt<%d>, addr 0x%.8lx, actual 0x%.8lx\n",
+						i,
+						start_addr + offset*sizeof(vu_long),
+						temp);
+			    }
+			}
+			if(errs > 10)
+				return -1;
+#endif
 			if (ctrlc())
 				return -1;
 		}
 
 		anti_pattern = ~pattern;
 		addr[offset] = anti_pattern;
+
+		print_heartbeat(cnt++);
 	}
 
 	/*
 	 * Check each location for the inverted pattern and zero it.
 	 */
+	cnt = 0;
 	for (pattern = 1, offset = 0; offset < num_words; pattern++, offset++) {
 		WATCHDOG_RESET();
 		anti_pattern = ~pattern;
@@ -791,16 +841,33 @@ static ulong mem_test_alt(vu_long *buf, ulong start_addr, ulong end_addr,
 				start_addr + offset*sizeof(vu_long),
 				anti_pattern, temp);
 			errs++;
+#ifdef FAILURE_DOUBLE_CHECK
+			for(i=0; i<10; i++)
+			{
+			    temp = *(volatile vu_long *)(start_addr + offset*sizeof(vu_long));
+			    if(temp != anti_pattern)
+			    {
+                                printf("[second pass]: double check at cnt<%d>, addr 0x%.8lx, actual 0x%.8lx\n",
+						i,
+						start_addr + offset*sizeof(vu_long),
+						temp);
+			    }
+			}
+			if(errs > 10)
+				return -1;
+#endif
 			if (ctrlc())
 				return -1;
 		}
 		addr[offset] = 0;
+
+		print_heartbeat(cnt++);
 	}
 
 	return errs;
 }
 
-static ulong mem_test_quick(vu_long *buf, ulong start_addr, ulong end_addr,
+ulong mem_test_quick(vu_long *buf, ulong start_addr, ulong end_addr,
 			    vu_long pattern, int iteration)
 {
 	vu_long *end;
@@ -879,9 +946,12 @@ static int do_mem_mtest(cmd_tbl_t *cmdtp, int flag, int argc,
 #else
 	const int alt_test = 0;
 #endif
+	unsigned long ddr_density = get_ddr_density();
 
 	start = CONFIG_SYS_MEMTEST_START;
 	end = CONFIG_SYS_MEMTEST_END;
+	if(end > ddr_density)
+		end = ddr_density;
 
 	if (argc > 1)
 		if (strict_strtoul(argv[1], 16, &start) < 0)
@@ -908,8 +978,104 @@ static int do_mem_mtest(cmd_tbl_t *cmdtp, int flag, int argc,
 	debug("%s:%d: start %#08lx end %#08lx\n", __func__, __LINE__,
 	      start, end);
 
+	_l2cache_ciall();
+
 	buf = map_sysmem(start, end - start);
-	dummy = map_sysmem(CONFIG_SYS_MEMTEST_SCRATCH, sizeof(vu_long));
+	//dummy = map_sysmem(CONFIG_SYS_MEMTEST_SCRATCH, sizeof(vu_long));
+	dummy = map_sysmem(start+ddr_density/2, sizeof(vu_long));
+	for (iteration = 0;
+			!iteration_limit || iteration < iteration_limit;
+			iteration++) {
+		if (ctrlc()) {
+			errs = -1UL;
+			break;
+		}
+
+		printf("Iteration: %6d\r", iteration + 1);
+		debug("\n");
+		if (alt_test) {
+			errs = mem_test_alt(buf, start, end, dummy);
+		} else {
+			errs = mem_test_quick(buf, start, end, pattern,
+					      iteration);
+		}
+		if (errs == -1UL)
+			break;
+	}
+
+	/*
+	 * Work-around for eldk-4.2 which gives this warning if we try to
+	 * case in the unmap_sysmem() call:
+	 * warning: initialization discards qualifiers from pointer target type
+	 */
+	{
+		void *vbuf = (void *)buf;
+		void *vdummy = (void *)dummy;
+
+		unmap_sysmem(vbuf);
+		unmap_sysmem(vdummy);
+	}
+
+	if (errs == -1UL) {
+		/* Memory test was aborted - write a newline to finish off */
+		putc('\n');
+		ret = 1;
+	} else {
+		printf("Tested %d iteration(s) with %lu errors.\n",
+			iteration, errs);
+		ret = errs != 0;
+	}
+
+	return ret;
+}
+static int do_mem_mtest_alt(cmd_tbl_t *cmdtp, int flag, int argc,
+			char * const argv[])
+{
+	ulong start, end;
+	vu_long *buf, *dummy;
+	ulong iteration_limit = 0;
+	int ret;
+	ulong errs = 0;	/* number of errors, or -1 if interrupted */
+	ulong pattern = 0;
+	int iteration;
+	const int alt_test = 1;
+	unsigned long ddr_density = get_ddr_density();
+
+	start = CONFIG_SYS_MEMTEST_START;
+	end = CONFIG_SYS_MEMTEST_END;
+	if(end > ddr_density)
+		end = ddr_density;
+
+	if (argc > 1)
+		if (strict_strtoul(argv[1], 16, &start) < 0)
+			return CMD_RET_USAGE;
+
+	if (argc > 2)
+		if (strict_strtoul(argv[2], 16, &end) < 0)
+			return CMD_RET_USAGE;
+
+	if (argc > 3)
+		if (strict_strtoul(argv[3], 16, &pattern) < 0)
+			return CMD_RET_USAGE;
+
+	if (argc > 4)
+		if (strict_strtoul(argv[4], 16, &iteration_limit) < 0)
+			return CMD_RET_USAGE;
+
+	if (end < start) {
+		printf("Refusing to do empty test\n");
+		return -1;
+	}
+
+	printf("Testing %08lx ... %08lx:\n", start, end);
+	debug("%s:%d: start %#08lx end %#08lx\n", __func__, __LINE__,
+	      start, end);
+
+	_l2cache_ciall();
+
+	buf = map_sysmem(start, end - start);
+	//dummy = map_sysmem(CONFIG_SYS_MEMTEST_SCRATCH, sizeof(vu_long));
+	dummy = map_sysmem(start+ddr_density/2, sizeof(vu_long));
 	for (iteration = 0;
 			!iteration_limit || iteration < iteration_limit;
 			iteration++) {
@@ -1265,6 +1431,11 @@ U_BOOT_CMD(
 U_BOOT_CMD(
 	mtest,	5,	1,	do_mem_mtest,
 	"simple RAM read/write test",
+	"[start [end [pattern [iterations]]]]"
+);
+U_BOOT_CMD(
+	mtest_alt,	5,	1,	do_mem_mtest_alt,
+	"mtest alternative read/write test",
 	"[start [end [pattern [iterations]]]]"
 );
 #endif	/* CONFIG_CMD_MEMTEST */

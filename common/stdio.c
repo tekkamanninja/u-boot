@@ -354,6 +354,9 @@ int stdio_add_devices(void)
 	 * So just probe all video devices now so that whichever one is
 	 * required will be available.
 	 */
+	ulong start;
+
+	start = get_timer(0);
 #ifndef CONFIG_SYS_CONSOLE_IS_IN_ENV
 	struct udevice *vdev;
 # ifndef CONFIG_DM_KEYBOARD
@@ -370,6 +373,7 @@ int stdio_add_devices(void)
 #if defined(CONFIG_SPLASH_SCREEN) && defined(CONFIG_CMD_BMP)
 	splash_display();
 #endif /* CONFIG_SPLASH_SCREEN && CONFIG_CMD_BMP */
+	printf("splash screen startup cost %lu ms\n", get_timer(start));
 #else
 # if defined(CONFIG_LCD)
 	drv_lcd_init ();
