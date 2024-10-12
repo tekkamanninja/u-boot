@@ -61,6 +61,8 @@ fit-dtb.blob*
 #
 # Generated include files
 #
+/include/autoconf.mk*
+/include/config.h
 /include/config/
 /include/generated/
 
@@ -96,10 +98,5 @@ GTAGS
 # Python cache
 __pycache__
 
-# cvitek auto-generated files
-/include/cvitek/cvitek.h
-/include/cvipart.h
-/include/imgs.h
-/include/cvi_board_memmap.h
 tags
 build
