@@ -1,0 +1,1 @@
+/mnt/development_f36/RISCV/LinuxFoundation/科通/SG2042/duo-buildroot-sdk/build/boards/cv181x/cv1813h_milkv_duos_sd/u-boot/cvitek.h
